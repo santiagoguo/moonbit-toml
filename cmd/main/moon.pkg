@@ -1,6 +1,6 @@
-// import {
-//   "username/moonbit_toml" @lib,
-// }
+import {
+  "santiagoguo/moonbit_toml/lib",
+}
 
 options(
   "is-main": true,

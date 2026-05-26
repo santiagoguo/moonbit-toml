@@ -1,7 +1,9 @@
-///|
-/// Entry point for the CLI or runnable program in this template.
-/// Keep main focused; move logic into the library package.
-/// Run with `moon run cmd/main` from the project root.
+using @lib {
+  parse_toml
+}
+
 fn main {
-  println("Hello")
+  let input = "title = \"TOML Example\"\nname = \"Tom\"\nversion = 123"
+  let result = parse_toml(input)
+  println("Parsed: \{result.to_string()}")
 }

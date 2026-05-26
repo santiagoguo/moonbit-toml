@@ -9,7 +9,7 @@
 //   "moonbitlang/x@0.4.6",
 // }
 
-name = "username/moonbit_toml"
+name = "santiagoguo/moonbit_toml"
 
 version = "0.1.0"
 

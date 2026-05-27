@@ -3437,6 +3437,435 @@ fn ser_value_str(value : TomlValue) -> String {
 }
 
 // ============================================================
+// SECTION 8K: Advanced Query and Filtering
+// ============================================================
+/// Find all values matching a specific type name
+pub fn find_all_by_type(root : TomlValue, type_name : String) -> Array[(TomlPath, TomlValue)] {
+  let results : Array[(TomlPath, TomlValue)] = []
+  let current_path : Array[PathSegment] = []
+  find_all_by_type_recursive(root, type_name, current_path, results)
+  results
+}
+
+fn find_all_by_type_recursive(value : TomlValue, type_name : String, path : Array[PathSegment], results : Array[(TomlPath, TomlValue)]) -> Unit {
+  if value.type_name() == type_name {
+    let p : TomlPath = { segments: path }
+    results.push((p, value))
+  }
+  match value {
+    TomlValue::Table(t) | TomlValue::InlineTable(t) => {
+      let entries = t.to_array()
+      let mut i = 0
+      while i < entries.length() {
+        let new_path : Array[PathSegment] = []
+        let mut k = 0
+        while k < path.length() { new_path.push(path[k]); k = k + 1 }
+        new_path.push(PathSegment::Key(entries[i].0))
+        find_all_by_type_recursive(entries[i].1, type_name, new_path, results)
+        i = i + 1
+      }
+    }
+    TomlValue::Array(arr) => {
+      let mut j = 0
+      while j < arr.length() {
+        let new_path : Array[PathSegment] = []
+        let mut k = 0
+        while k < path.length() { new_path.push(path[k]); k = k + 1 }
+        new_path.push(PathSegment::Index(j))
+        find_all_by_type_recursive(arr[j], type_name, new_path, results)
+        j = j + 1
+      }
+    }
+    _ => { let _ = 0 }
+  }
+}
+
+/// Find all keys containing a specific substring
+pub fn find_keys_containing(root : TomlValue, substr : String) -> Array[TomlPath] {
+  let results : Array[TomlPath] = []
+  let current_path : Array[PathSegment] = []
+  find_keys_containing_recursive(root, substr, current_path, results)
+  results
+}
+
+fn find_keys_containing_recursive(value : TomlValue, substr : String, path : Array[PathSegment], results : Array[TomlPath]) -> Unit {
+  match value {
+    TomlValue::Table(t) | TomlValue::InlineTable(t) => {
+      let entries = t.to_array()
+      let mut i = 0
+      while i < entries.length() {
+        let key = entries[i].0
+        if key.contains(substr) {
+          let new_path : Array[PathSegment] = []
+          let mut k = 0
+          while k < path.length() { new_path.push(path[k]); k = k + 1 }
+          new_path.push(PathSegment::Key(key))
+          let p : TomlPath = { segments: new_path }
+          results.push(p)
+        }
+        let new_path2 : Array[PathSegment] = []
+        let mut m = 0
+        while m < path.length() { new_path2.push(path[m]); m = m + 1 }
+        new_path2.push(PathSegment::Key(key))
+        find_keys_containing_recursive(entries[i].1, substr, new_path2, results)
+        i = i + 1
+      }
+    }
+    TomlValue::Array(arr) => {
+      let mut j = 0
+      while j < arr.length() {
+        let new_path : Array[PathSegment] = []
+        let mut k = 0
+        while k < path.length() { new_path.push(path[k]); k = k + 1 }
+        new_path.push(PathSegment::Index(j))
+        find_keys_containing_recursive(arr[j], substr, new_path, results)
+        j = j + 1
+      }
+    }
+    _ => { let _ = 0 }
+  }
+}
+
+/// Get all leaf values in document order
+pub fn all_leaves(value : TomlValue) -> Array[TomlValue] {
+  let results : Array[TomlValue] = []
+  collect_leaves(value, results)
+  results
+}
+
+fn collect_leaves(value : TomlValue, results : Array[TomlValue]) -> Unit {
+  match value {
+    TomlValue::Table(t) | TomlValue::InlineTable(t) => {
+      let entries = t.to_array()
+      let mut i = 0
+      while i < entries.length() {
+        collect_leaves(entries[i].1, results)
+        i = i + 1
+      }
+    }
+    TomlValue::Array(arr) => {
+      let mut j = 0
+      while j < arr.length() {
+        collect_leaves(arr[j], results)
+        j = j + 1
+      }
+    }
+    _ => { results.push(value) }
+  }
+}
+
+// ============================================================
+// SECTION 8L: Schema Validation
+// ============================================================
+/// Represents a required field in a schema
+pub struct SchemaField {
+  name : String
+  required : Bool
+  expected_type : String
+}
+
+/// Validate a TomlValue against a list of schema fields
+pub fn validate_schema(value : TomlValue, schema : Array[SchemaField]) -> ValidationResult {
+  let errors : Array[String] = []
+  match value {
+    TomlValue::Table(t) | TomlValue::InlineTable(t) => {
+      let mut i = 0
+      while i < schema.length() {
+        let field = schema[i]
+        if field.required {
+          if (match t.get(field.name) { None => true; _ => false }) {
+            errors.push("Missing required field: " + field.name)
+          } else {
+            match t.get(field.name) {
+              Some(v) => {
+                if v.type_name() != field.expected_type {
+                  errors.push("Type mismatch for field " + field.name + ": expected " + field.expected_type + ", got " + v.type_name())
+                }
+              }
+              None => { let _ = 0 }
+            }
+          }
+        }
+        i = i + 1
+      }
+    }
+    _ => {
+      errors.push("Schema validation requires a table or inline table")
+    }
+  }
+  if errors.length() > 0 { validation_fail(errors) } else { validation_ok() }
+}
+
+/// Generate a schema from a TomlValue (infer structure)
+pub fn infer_schema(value : TomlValue) -> Array[SchemaField] {
+  let schema : Array[SchemaField] = []
+  match value {
+    TomlValue::Table(t) | TomlValue::InlineTable(t) => {
+      let entries = t.to_array()
+      let mut i = 0
+      while i < entries.length() {
+        let f : SchemaField = {
+          name: entries[i].0,
+          required: true,
+          expected_type: entries[i].1.type_name()
+        }
+        schema.push(f)
+        i = i + 1
+      }
+    }
+    _ => { let _ = 0 }
+  }
+  schema
+}
+
+/// Compare two schemas and return differences
+pub fn diff_schemas(left : Array[SchemaField], right : Array[SchemaField]) -> (Array[String], Array[String]) {
+  let added : Array[String] = []
+  let removed : Array[String] = []
+  let mut i = 0
+  while i < right.length() {
+    let found = is_field_in(right[i].name, left)
+    if !found { added.push(right[i].name) }
+    i = i + 1
+  }
+  let mut j = 0
+  while j < left.length() {
+    let found = is_field_in(left[j].name, right)
+    if !found { removed.push(left[j].name) }
+    j = j + 1
+  }
+  (added, removed)
+}
+
+fn is_field_in(name : String, schema : Array[SchemaField]) -> Bool {
+  let mut k = 0
+  while k < schema.length() {
+    if schema[k].name == name { return true }
+    k = k + 1
+  }
+  false
+}
+
+// ============================================================
+// SECTION 8M: Extended Serialization (XML, CSV, etc.)
+// ============================================================
+/// Convert TomlValue to an XML-like string (approximate)
+pub fn to_xml_like(value : TomlValue, root_tag : String) -> String {
+  let result : Array[String] = []
+  result.push("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
+  xml_recursive(value, root_tag, 0, result)
+  let mut r = ""
+  let mut i = 0
+  while i < result.length() {
+    if i > 0 { r = r + "\n" }
+    r = r + result[i]
+    i = i + 1
+  }
+  r
+}
+
+fn xml_recursive(value : TomlValue, tag : String, depth : Int, result : Array[String]) -> Unit {
+  let indent = String::make(depth * 2, Int::unsafe_to_char(32))
+  let open_tag = "<" + tag + ">"
+  let close_tag = "</" + tag + ">"
+  match value {
+    TomlValue::Table(t) | TomlValue::InlineTable(t) => {
+      result.push(indent + open_tag)
+      let entries = t.to_array()
+      let mut i = 0
+      while i < entries.length() {
+        xml_recursive(entries[i].1, entries[i].0, depth + 1, result)
+        i = i + 1
+      }
+      result.push(indent + close_tag)
+    }
+    TomlValue::Array(arr) => {
+      result.push(indent + open_tag)
+      let mut j = 0
+      while j < arr.length() {
+        xml_recursive(arr[j], "item", depth + 1, result)
+        j = j + 1
+      }
+      result.push(indent + close_tag)
+    }
+    TomlValue::Str(s) => {
+      result.push(indent + open_tag + xml_escape(s) + close_tag)
+    }
+    _ => {
+      result.push(indent + open_tag + ser_value_str(value) + close_tag)
+    }
+  }
+}
+
+fn xml_escape(s : String) -> String {
+  let mut r = ""
+  let chars = s.to_array()
+  let mut i = 0
+  while i < chars.length() {
+    let c = chars[i]
+    if c == Int::unsafe_to_char(60) { r = r + "&lt;" }
+    else if c == Int::unsafe_to_char(62) { r = r + "&gt;" }
+    else if c == Int::unsafe_to_char(38) { r = r + "&amp;" }
+    else { r = r + String::make(1, c) }
+    i = i + 1
+  }
+  r
+}
+
+/// Convert Table to CSV string (flattens first level of arrays if present)
+pub fn to_csv(value : TomlValue) -> String? {
+  match value {
+    TomlValue::Array(arr) => {
+      if arr.length() == 0 { return None }
+      let headers = get_csv_headers(arr[0])
+      let mut csv_str = join_csv_headers(headers) + "\n"
+      let mut i = 0
+      while i < arr.length() {
+        csv_str = csv_str + get_csv_row(arr[i], headers) + "\n"
+        i = i + 1
+      }
+      Some(csv_str)
+    }
+    _ => None
+  }
+}
+
+fn get_csv_headers(value : TomlValue) -> Array[String] {
+  let headers : Array[String] = []
+  match value {
+    TomlValue::Table(t) | TomlValue::InlineTable(t) => {
+      let entries = t.to_array()
+      let mut i = 0
+      while i < entries.length() {
+        headers.push(entries[i].0)
+        i = i + 1
+      }
+    }
+    _ => { let _ = 0 }
+  }
+  headers
+}
+
+fn join_csv_headers(headers : Array[String]) -> String {
+  let mut r = ""
+  let mut i = 0
+  while i < headers.length() {
+    if i > 0 { r = r + "," }
+    r = r + headers[i]
+    i = i + 1
+  }
+  r
+}
+
+fn get_csv_row(value : TomlValue, headers : Array[String]) -> String {
+  let mut r = ""
+  let mut i = 0
+  while i < headers.length() {
+    if i > 0 { r = r + "," }
+    match value {
+      TomlValue::Table(t) | TomlValue::InlineTable(t) => {
+        match t.get(headers[i]) {
+          Some(v) => r = r + csv_escape(v)
+          None => r = r + ""
+        }
+      }
+      _ => r = r + ""
+    }
+    i = i + 1
+  }
+  r
+}
+
+fn csv_escape(value : TomlValue) -> String {
+  let dq = String::make(1, Int::unsafe_to_char(34))
+  match value {
+    TomlValue::Str(s) => dq + s + dq
+    TomlValue::Int(i) => i.to_string()
+    TomlValue::Float(f) => f.to_string()
+    TomlValue::Bool(b) => if b { "true" } else { "false" }
+    _ => "..."
+  }
+}
+
+// ============================================================
+// SECTION 8N: Utility Functions
+// ============================================================
+/// Compute a simple hash of a TomlValue (for caching/deduplication)
+pub fn hash_value(value : TomlValue) -> Int {
+  let mut h = 0
+  let s = serialize_compact(value)
+  let chars = s.to_array()
+  let mut i = 0
+  while i < chars.length() {
+    h = h * 31 + chars[i].to_int()
+    i = i + 1
+  }
+  h
+}
+
+/// Compute a fingerprint string (MD5-like mock for debugging)
+pub fn fingerprint(value : TomlValue) -> String {
+  let h = hash_value(value)
+  "fp:" + h.to_string()
+}
+
+/// Count the total number of nodes in the tree
+pub fn count_nodes(value : TomlValue) -> Int {
+  match value {
+    TomlValue::Table(t) | TomlValue::InlineTable(t) => {
+      let entries = t.to_array()
+      let mut sum = 1
+      let mut i = 0
+      while i < entries.length() {
+        sum = sum + count_nodes(entries[i].1)
+        i = i + 1
+      }
+      sum
+    }
+    TomlValue::Array(arr) => {
+      let mut sum = 1
+      let mut j = 0
+      while j < arr.length() {
+        sum = sum + count_nodes(arr[j])
+        j = j + 1
+      }
+      sum
+    }
+    _ => 1
+  }
+}
+
+/// Get maximum width of the tree (maximum number of siblings at any level)
+pub fn max_width(value : TomlValue) -> Int {
+  match value {
+    TomlValue::Table(t) | TomlValue::InlineTable(t) => {
+      let w = t.length()
+      let entries = t.to_array()
+      let mut max_child = 0
+      let mut i = 0
+      while i < entries.length() {
+        let cw = max_width(entries[i].1)
+        if cw > max_child { max_child = cw }
+        i = i + 1
+      }
+      if w > max_child { w } else { max_child }
+    }
+    TomlValue::Array(arr) => {
+      let w = arr.length()
+      let mut max_child = 0
+      let mut j = 0
+      while j < arr.length() {
+        let cw = max_width(arr[j])
+        if cw > max_child { max_child = cw }
+        j = j + 1
+      }
+      if w > max_child { w } else { max_child }
+    }
+    _ => 1
+  }
+}
+
+// ============================================================
 // SECTION 9: Query API
 // ============================================================
 

@@ -1769,6 +1769,216 @@ pub fn is_valid_toml(source : String) -> Bool {
 
 // ============================================================
 // ============================================================
+// SECTION 8B: Builder API
+// ============================================================
+/// Builder for constructing TomlValue programmatically
+/// Provides fluent interface for creating TOML documents
+
+/// Create an empty table builder
+pub fn builder() -> Map[String, TomlValue] { Map([]) }
+
+/// Set a string value in the builder table
+pub fn builder_set_string(table : Map[String, TomlValue], key : String, value : String) -> Map[String, TomlValue] {
+  let r = table
+  r.set(key, TomlValue::Str(value))
+  r
+}
+
+/// Set an integer value in the builder table
+pub fn builder_set_int(table : Map[String, TomlValue], key : String, value : Int) -> Map[String, TomlValue] {
+  let r = table
+  r.set(key, TomlValue::Int(value))
+  r
+}
+
+/// Set a float value in the builder table
+pub fn builder_set_float(table : Map[String, TomlValue], key : String, value : Double) -> Map[String, TomlValue] {
+  let r = table
+  r.set(key, TomlValue::Float(value))
+  r
+}
+
+/// Set a boolean value in the builder table
+pub fn builder_set_bool(table : Map[String, TomlValue], key : String, value : Bool) -> Map[String, TomlValue] {
+  let r = table
+  r.set(key, TomlValue::Bool(value))
+  r
+}
+
+/// Set a date-time value in the builder table
+pub fn builder_set_datetime(table : Map[String, TomlValue], key : String, value : String) -> Map[String, TomlValue] {
+  let r = table
+  r.set(key, TomlValue::OffsetDateTime({ datetime: value }))
+  r
+}
+
+/// Set a local date-time value in the builder table
+pub fn builder_set_local_datetime(table : Map[String, TomlValue], key : String, value : String) -> Map[String, TomlValue] {
+  let r = table
+  r.set(key, TomlValue::LocalDateTime({ datetime: value }))
+  r
+}
+
+/// Set a local date value in the builder table
+pub fn builder_set_date(table : Map[String, TomlValue], key : String, value : String) -> Map[String, TomlValue] {
+  let r = table
+  r.set(key, TomlValue::LocalDate({ date: value }))
+  r
+}
+
+/// Set a local time value in the builder table
+pub fn builder_set_time(table : Map[String, TomlValue], key : String, value : String) -> Map[String, TomlValue] {
+  let r = table
+  r.set(key, TomlValue::LocalTime({ time: value }))
+  r
+}
+
+/// Set a TomlValue directly
+pub fn builder_set(table : Map[String, TomlValue], key : String, value : TomlValue) -> Map[String, TomlValue] {
+  let r = table
+  r.set(key, value)
+  r
+}
+
+/// Create an array value from a list of TomlValue
+pub fn builder_array(items : Array[TomlValue]) -> TomlValue { TomlValue::Array(items) }
+
+/// Create an inline table from key-value pairs
+pub fn builder_inline_table(entries : Array[(String, TomlValue)]) -> TomlValue {
+  let tbl : Map[String, TomlValue] = Map([])
+  let mut i = 0
+  while i < entries.length() {
+    tbl.set(entries[i].0, entries[i].1)
+    i = i + 1
+  }
+  TomlValue::InlineTable(tbl)
+}
+
+/// Create a nested table from key-value pairs
+pub fn builder_table(entries : Array[(String, TomlValue)]) -> TomlValue {
+  let tbl : Map[String, TomlValue] = Map([])
+  let mut i = 0
+  while i < entries.length() {
+    tbl.set(entries[i].0, entries[i].1)
+    i = i + 1
+  }
+  TomlValue::Table(tbl)
+}
+
+/// Create a string value
+pub fn v_str(s : String) -> TomlValue { TomlValue::Str(s) }
+
+/// Create an integer value
+pub fn v_int(i : Int) -> TomlValue { TomlValue::Int(i) }
+
+/// Create a float value
+pub fn v_float(f : Double) -> TomlValue { TomlValue::Float(f) }
+
+/// Create a boolean value
+pub fn v_bool(b : Bool) -> TomlValue { TomlValue::Bool(b) }
+
+/// Create a date-time value
+pub fn v_datetime(s : String) -> TomlValue { TomlValue::OffsetDateTime({ datetime: s }) }
+
+/// Create a local date-time value
+pub fn v_local_datetime(s : String) -> TomlValue { TomlValue::LocalDateTime({ datetime: s }) }
+
+/// Create a local date value
+pub fn v_date(s : String) -> TomlValue { TomlValue::LocalDate({ date: s }) }
+
+/// Create a local time value
+pub fn v_time(s : String) -> TomlValue { TomlValue::LocalTime({ time: s }) }
+
+/// Create an array value
+pub fn v_array(items : Array[TomlValue]) -> TomlValue { TomlValue::Array(items) }
+
+/// Remove a key from the builder table
+pub fn builder_remove(table : Map[String, TomlValue], key : String) -> Map[String, TomlValue] {
+  let r = table
+  r.remove(key)
+  r
+}
+
+/// Check if a key exists in the builder
+pub fn builder_has(table : Map[String, TomlValue], key : String) -> Bool {
+  match table.get(key) {
+    Some(_) => true
+    None => false
+  }
+}
+
+/// Get the number of entries in the builder
+pub fn builder_len(table : Map[String, TomlValue]) -> Int { table.length() }
+
+/// Build the final TomlValue from the builder
+pub fn builder_build(table : Map[String, TomlValue]) -> TomlValue { TomlValue::Table(table) }
+
+/// Set a value at a dotted path in the builder
+pub fn builder_set_path(table : Map[String, TomlValue], dotted : String, value : TomlValue) -> Map[String, TomlValue] {
+  set_dotted(table, dotted, value)
+}
+
+/// Create a builder pre-populated with some values
+pub fn builder_from(entries : Array[(String, TomlValue)]) -> Map[String, TomlValue] {
+  let tbl : Map[String, TomlValue] = Map([])
+  let mut i = 0
+  while i < entries.length() {
+    tbl.set(entries[i].0, entries[i].1)
+    i = i + 1
+  }
+  tbl
+}
+
+/// Create an array of a single type (strings)
+pub fn v_array_str(items : Array[String]) -> TomlValue {
+  let result : Array[TomlValue] = []
+  let mut i = 0
+  while i < items.length() {
+    result.push(TomlValue::Str(items[i]))
+    i = i + 1
+  }
+  TomlValue::Array(result)
+}
+
+/// Create an array of integers
+pub fn v_array_int(items : Array[Int]) -> TomlValue {
+  let result : Array[TomlValue] = []
+  let mut i = 0
+  while i < items.length() {
+    result.push(TomlValue::Int(items[i]))
+    i = i + 1
+  }
+  TomlValue::Array(result)
+}
+
+/// Create an array of floats
+pub fn v_array_float(items : Array[Double]) -> TomlValue {
+  let result : Array[TomlValue] = []
+  let mut i = 0
+  while i < items.length() {
+    result.push(TomlValue::Float(items[i]))
+    i = i + 1
+  }
+  TomlValue::Array(result)
+}
+
+/// Create an array of booleans
+pub fn v_array_bool(items : Array[Bool]) -> TomlValue {
+  let result : Array[TomlValue] = []
+  let mut i = 0
+  while i < items.length() {
+    result.push(TomlValue::Bool(items[i]))
+    i = i + 1
+  }
+  TomlValue::Array(result)
+}
+
+/// Convenience: build and serialize in one step
+pub fn builder_serialize(table : Map[String, TomlValue]) -> String {
+  serialize(TomlValue::Table(table))
+}
+
+// ============================================================
 // SECTION 9: Query API
 // ============================================================
 

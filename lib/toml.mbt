@@ -1768,6 +1768,221 @@ pub fn is_valid_toml(source : String) -> Bool {
 }
 
 // ============================================================
+// ============================================================
+// SECTION 9: Query API
+// ============================================================
+
+/// Get a top-level key from a table or inline table value
+pub fn get_key(value : TomlValue, key : String) -> TomlValue? {
+  match value {
+    TomlValue::Table(t) | TomlValue::InlineTable(t) => t.get(key)
+    _ => None
+  }
+}
+
+/// Navigate a nested path using an array of keys
+/// Returns None if any intermediate key is missing or not a table
+pub fn get_nested(value : TomlValue, keys : Array[String]) -> TomlValue? {
+  let mut current : TomlValue? = Some(value)
+  let mut i = 0
+  while i < keys.length() {
+    match current {
+      Some(TomlValue::Table(t)) | Some(TomlValue::InlineTable(t)) => {
+        current = t.get(keys[i])
+      }
+      _ => return None
+    }
+    i = i + 1
+  }
+  current
+}
+
+/// Navigate a dotted path like "server.database.host"
+pub fn get_by_path(value : TomlValue, dotted_path : String) -> TomlValue? {
+  let keys = dotted_path.split(".").to_array().map(fn(sv) { sv.to_owned() })
+  get_nested(value, keys)
+}
+
+/// Type-safe string getter
+pub fn get_string(value : TomlValue, key : String) -> String? {
+  match get_key(value, key) {
+    Some(TomlValue::Str(s)) => Some(s)
+    _ => None
+  }
+}
+
+/// Type-safe integer getter
+pub fn get_int(value : TomlValue, key : String) -> Int? {
+  match get_key(value, key) {
+    Some(TomlValue::Int(i)) => Some(i)
+    _ => None
+  }
+}
+
+/// Type-safe float getter
+pub fn get_float(value : TomlValue, key : String) -> Double? {
+  match get_key(value, key) {
+    Some(TomlValue::Float(f)) => Some(f)
+    _ => None
+  }
+}
+
+/// Type-safe boolean getter
+pub fn get_bool(value : TomlValue, key : String) -> Bool? {
+  match get_key(value, key) {
+    Some(TomlValue::Bool(b)) => Some(b)
+    _ => None
+  }
+}
+
+/// Type-safe array getter
+pub fn get_array(value : TomlValue, key : String) -> Array[TomlValue]? {
+  match get_key(value, key) {
+    Some(TomlValue::Array(arr)) => Some(arr)
+    _ => None
+  }
+}
+
+/// Type-safe table getter
+pub fn get_table(value : TomlValue, key : String) -> Map[String, TomlValue]? {
+  match get_key(value, key) {
+    Some(TomlValue::Table(t)) | Some(TomlValue::InlineTable(t)) => Some(t)
+    _ => None
+  }
+}
+
+/// Get array element by index
+pub fn get_at(arr : Array[TomlValue], index : Int) -> TomlValue? {
+  if index < 0 || index >= arr.length() { None } else { Some(arr[index]) }
+}
+
+/// Check if a key exists in a table
+pub fn has_key(value : TomlValue, key : String) -> Bool {
+  match get_key(value, key) {
+    Some(_) => true
+    None => false
+  }
+}
+
+/// Get all keys from a table value
+pub fn keys(value : TomlValue) -> Array[String] {
+  match value {
+    TomlValue::Table(t) | TomlValue::InlineTable(t) => {
+      let entries = t.to_array()
+      let result : Array[String] = []
+      let mut i = 0
+      while i < entries.length() {
+        result.push(entries[i].0)
+        i = i + 1
+      }
+      result
+    }
+    _ => []
+  }
+}
+
+/// Get all values from a table value
+pub fn values(value : TomlValue) -> Array[TomlValue] {
+  match value {
+    TomlValue::Table(t) | TomlValue::InlineTable(t) => {
+      let entries = t.to_array()
+      let result : Array[TomlValue] = []
+      let mut i = 0
+      while i < entries.length() {
+        result.push(entries[i].1)
+        i = i + 1
+      }
+      result
+    }
+    _ => []
+  }
+}
+
+/// Get the number of entries in a table or array
+pub fn len(value : TomlValue) -> Int {
+  match value {
+    TomlValue::Table(t) | TomlValue::InlineTable(t) => t.length()
+    TomlValue::Array(arr) => arr.length()
+    TomlValue::Str(s) => s.length()
+    _ => 0
+  }
+}
+
+/// Check if a table is empty or array is empty
+pub fn is_empty(value : TomlValue) -> Bool { len(value) == 0 }
+
+/// Get the string value or a default
+pub fn get_string_or(value : TomlValue, key : String, default : String) -> String {
+  match get_string(value, key) {
+    Some(s) => s
+    None => default
+  }
+}
+
+/// Get the int value or a default
+pub fn get_int_or(value : TomlValue, key : String, default : Int) -> Int {
+  match get_int(value, key) {
+    Some(i) => i
+    None => default
+  }
+}
+
+/// Get the float value or a default
+pub fn get_float_or(value : TomlValue, key : String, default : Double) -> Double {
+  match get_float(value, key) {
+    Some(f) => f
+    None => default
+  }
+}
+
+/// Get the bool value or a default
+pub fn get_bool_or(value : TomlValue, key : String, default : Bool) -> Bool {
+  match get_bool(value, key) {
+    Some(b) => b
+    None => default
+  }
+}
+
+/// Recursively collect all leaf key paths (dotted notation)
+pub fn all_paths(value : TomlValue) -> Array[String] {
+  collect_paths(value, "")
+}
+
+fn collect_paths(value : TomlValue, prefix : String) -> Array[String] {
+  match value {
+    TomlValue::Table(t) | TomlValue::InlineTable(t) => {
+      let entries = t.to_array()
+      let result : Array[String] = []
+      let mut i = 0
+      while i < entries.length() {
+        let new_prefix = if prefix == "" { entries[i].0 } else { prefix + "." + entries[i].0 }
+        let sub = collect_paths(entries[i].1, new_prefix)
+        let mut j = 0
+        while j < sub.length() { result.push(sub[j]); j = j + 1 }
+        i = i + 1
+      }
+      result
+    }
+    TomlValue::Array(arr) => {
+      let result : Array[String] = []
+      let mut j = 0
+      while j < arr.length() {
+        let new_prefix = prefix + "[" + j.to_string() + "]"
+        let sub = collect_paths(arr[j], new_prefix)
+        let mut k = 0
+        while k < sub.length() { result.push(sub[k]); k = k + 1 }
+        j = j + 1
+      }
+      result
+    }
+    _ => {
+      let result : Array[String] = []
+      result.push(prefix)
+      result
+    }
+  }
+}
+
 // SECTION 9: Serializer
 // ============================================================
 

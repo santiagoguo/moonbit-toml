@@ -2212,6 +2212,368 @@ pub fn is_homogeneous(value : TomlValue) -> Bool {
 }
 
 // ============================================================
+// SECTION 8D: Merge Module
+// ============================================================
+/// Deep merge two TomlValues. Right side takes precedence on conflicts.
+pub fn merge(left : TomlValue, right : TomlValue) -> TomlValue {
+  match left {
+    TomlValue::Table(lt) => {
+      match right {
+        TomlValue::Table(rt) => merge_tables(lt, rt, false)
+        TomlValue::InlineTable(rt) => merge_tables(lt, rt, false)
+        _ => right
+      }
+    }
+    TomlValue::InlineTable(lt) => {
+      match right {
+        TomlValue::Table(rt) => merge_tables(lt, rt, true)
+        TomlValue::InlineTable(rt) => merge_tables(lt, rt, true)
+        _ => right
+      }
+    }
+    TomlValue::Array(la) => {
+      match right {
+        TomlValue::Array(ra) => {
+          let result : Array[TomlValue] = []
+          let mut i = 0
+          while i < la.length() { result.push(la[i]); i = i + 1 }
+          let mut j = 0
+          while j < ra.length() { result.push(ra[j]); j = j + 1 }
+          TomlValue::Array(result)
+        }
+        _ => right
+      }
+    }
+    _ => right
+  }
+}
+
+fn merge_tables(left : Map[String, TomlValue], right : Map[String, TomlValue], inline : Bool) -> TomlValue {
+  let result : Map[String, TomlValue] = Map([])
+  // Copy all left entries
+  let l_entries = left.to_array()
+  let mut i = 0
+  while i < l_entries.length() {
+    result.set(l_entries[i].0, l_entries[i].1)
+    i = i + 1
+  }
+  // Merge right entries
+  let r_entries = right.to_array()
+  let mut j = 0
+  while j < r_entries.length() {
+    let key = r_entries[j].0
+    let rval = r_entries[j].1
+    match result.get(key) {
+      Some(lval) => {
+        result.set(key, merge(lval, rval))
+      }
+      None => {
+        result.set(key, rval)
+      }
+    }
+    j = j + 1
+  }
+  if inline { TomlValue::InlineTable(result) } else { TomlValue::Table(result) }
+}
+
+/// Merge with conflict detection - returns (merged, conflicts)
+pub fn merge_with_conflicts(left : TomlValue, right : TomlValue) -> (TomlValue, Array[String]) {
+  let conflicts : Array[String] = []
+  let merged = merge_detect_conflicts(left, right, "", conflicts)
+  (merged, conflicts)
+}
+
+fn merge_detect_conflicts(left : TomlValue, right : TomlValue, path : String, conflicts : Array[String]) -> TomlValue {
+  match left {
+    TomlValue::Table(lt) => {
+      match right {
+        TomlValue::Table(rt) => merge_tables_detect(lt, rt, path, conflicts)
+        TomlValue::InlineTable(rt) => merge_tables_detect(lt, rt, path, conflicts)
+        _ => right
+      }
+    }
+    TomlValue::InlineTable(lt) => {
+      match right {
+        TomlValue::Table(rt) => merge_tables_detect(lt, rt, path, conflicts)
+        TomlValue::InlineTable(rt) => merge_tables_detect(lt, rt, path, conflicts)
+        _ => right
+      }
+    }
+    _ => right
+  }
+}
+
+fn merge_tables_detect(left : Map[String, TomlValue], right : Map[String, TomlValue], path : String, conflicts : Array[String]) -> TomlValue {
+  let result : Map[String, TomlValue] = Map([])
+  let l_entries = left.to_array()
+  let mut i = 0
+  while i < l_entries.length() {
+    result.set(l_entries[i].0, l_entries[i].1)
+    i = i + 1
+  }
+  let r_entries = right.to_array()
+  let mut j = 0
+  while j < r_entries.length() {
+    let key = r_entries[j].0
+    let rval = r_entries[j].1
+    let new_path = if path == "" { key } else { path + "." + key }
+    match result.get(key) {
+      Some(lval) => {
+        match lval {
+          TomlValue::Table(_) => {
+            match rval {
+              TomlValue::Table(_) | TomlValue::InlineTable(_) => {
+                result.set(key, merge_detect_conflicts(lval, rval, new_path, conflicts))
+              }
+              _ => {
+                if lval.type_name() != rval.type_name() {
+                  conflicts.push("Type conflict at " + new_path + ": " + lval.type_name() + " vs " + rval.type_name())
+                }
+                result.set(key, rval)
+              }
+            }
+          }
+          TomlValue::InlineTable(_) => {
+            match rval {
+              TomlValue::Table(_) | TomlValue::InlineTable(_) => {
+                result.set(key, merge_detect_conflicts(lval, rval, new_path, conflicts))
+              }
+              _ => {
+                if lval.type_name() != rval.type_name() {
+                  conflicts.push("Type conflict at " + new_path + ": " + lval.type_name() + " vs " + rval.type_name())
+                }
+                result.set(key, rval)
+              }
+            }
+          }
+          _ => {
+            if lval.type_name() != rval.type_name() {
+              conflicts.push("Type conflict at " + new_path + ": " + lval.type_name() + " vs " + rval.type_name())
+            }
+            result.set(key, rval)
+          }
+        }
+      }
+      None => { result.set(key, rval) }
+    }
+    j = j + 1
+  }
+  TomlValue::Table(result)
+}
+
+/// Shallow merge - only top-level keys, no recursion
+pub fn shallow_merge(left : TomlValue, right : TomlValue) -> TomlValue {
+  match left {
+    TomlValue::Table(lt) => {
+      match right {
+        TomlValue::Table(rt) => {
+          let result : Map[String, TomlValue] = Map([])
+          let l_entries = lt.to_array()
+          let mut i = 0
+          while i < l_entries.length() { result.set(l_entries[i].0, l_entries[i].1); i = i + 1 }
+          let r_entries = rt.to_array()
+          let mut j = 0
+          while j < r_entries.length() { result.set(r_entries[j].0, r_entries[j].1); j = j + 1 }
+          TomlValue::Table(result)
+        }
+        _ => right
+      }
+    }
+    _ => right
+  }
+}
+
+// ============================================================
+// SECTION 8E: Diff Module
+// ============================================================
+/// Represents a difference between two TomlValues
+pub enum DiffKind {
+  Added(TomlValue)
+  Removed(TomlValue)
+  Modified(TomlValue, TomlValue)
+  Unchanged
+}
+
+pub struct DiffEntry {
+  path : String
+  kind : DiffKind
+}
+
+pub impl Show for DiffEntry with to_string(self : DiffEntry) -> String {
+  match self.kind {
+    DiffKind::Added(_) => "Added: " + self.path
+    DiffKind::Removed(_) => "Removed: " + self.path
+    DiffKind::Modified(_, _) => "Modified: " + self.path
+    DiffKind::Unchanged => "Unchanged: " + self.path
+  }
+}
+
+/// Compute the diff between two TomlValues
+pub fn diff(old_val : TomlValue, new_val : TomlValue) -> Array[DiffEntry] {
+  let result : Array[DiffEntry] = []
+  diff_recursive(old_val, new_val, "", result)
+  result
+}
+
+fn diff_recursive(old_val : TomlValue, new_val : TomlValue, path : String, result : Array[DiffEntry]) -> Unit {
+  match old_val {
+    TomlValue::Table(ot) => {
+      match new_val {
+        TomlValue::Table(nt) => diff_tables(ot, nt, path, result)
+        _ => {
+          if !deep_equal(old_val, new_val) {
+            let entry : DiffEntry = { path: path, kind: DiffKind::Modified(old_val, new_val) }
+            result.push(entry)
+          }
+        }
+      }
+    }
+    TomlValue::InlineTable(ot) => {
+      match new_val {
+        TomlValue::InlineTable(nt) => diff_tables(ot, nt, path, result)
+        _ => {
+          if !deep_equal(old_val, new_val) {
+            let entry : DiffEntry = { path: path, kind: DiffKind::Modified(old_val, new_val) }
+            result.push(entry)
+          }
+        }
+      }
+    }
+    TomlValue::Array(oa) => {
+      match new_val {
+        TomlValue::Array(na) => diff_arrays(oa, na, path, result)
+        _ => {
+          if !deep_equal(old_val, new_val) {
+            let entry : DiffEntry = { path: path, kind: DiffKind::Modified(old_val, new_val) }
+            result.push(entry)
+          }
+        }
+      }
+    }
+    _ => {
+      if !deep_equal(old_val, new_val) {
+        let entry : DiffEntry = { path: path, kind: DiffKind::Modified(old_val, new_val) }
+        result.push(entry)
+      }
+    }
+  }
+}
+
+fn diff_tables(old_tbl : Map[String, TomlValue], new_tbl : Map[String, TomlValue], path : String, result : Array[DiffEntry]) -> Unit {
+  // Find removed and modified keys
+  let o_entries = old_tbl.to_array()
+  let mut i = 0
+  while i < o_entries.length() {
+    let key = o_entries[i].0
+    let oval = o_entries[i].1
+    let new_path = if path == "" { key } else { path + "." + key }
+    match new_tbl.get(key) {
+      Some(nval) => { diff_recursive(oval, nval, new_path, result) }
+      None => {
+        let entry : DiffEntry = { path: new_path, kind: DiffKind::Removed(oval) }
+        result.push(entry)
+      }
+    }
+    i = i + 1
+  }
+  // Find added keys
+  let n_entries = new_tbl.to_array()
+  let mut j = 0
+  while j < n_entries.length() {
+    let key = n_entries[j].0
+    if (match old_tbl.get(key) { None => true; _ => false }) {
+      let new_path = if path == "" { key } else { path + "." + key }
+      let entry : DiffEntry = { path: new_path, kind: DiffKind::Added(n_entries[j].1) }
+      result.push(entry)
+    }
+    j = j + 1
+  }
+}
+
+fn diff_arrays(old_arr : Array[TomlValue], new_arr : Array[TomlValue], path : String, result : Array[DiffEntry]) -> Unit {
+  let max_len = if old_arr.length() > new_arr.length() { old_arr.length() } else { new_arr.length() }
+  let mut i = 0
+  while i < max_len {
+    let item_path = path + "[" + i.to_string() + "]"
+    if i >= old_arr.length() {
+      let entry : DiffEntry = { path: item_path, kind: DiffKind::Added(new_arr[i]) }
+      result.push(entry)
+    } else if i >= new_arr.length() {
+      let entry : DiffEntry = { path: item_path, kind: DiffKind::Removed(old_arr[i]) }
+      result.push(entry)
+    } else {
+      diff_recursive(old_arr[i], new_arr[i], item_path, result)
+    }
+    i = i + 1
+  }
+}
+
+/// Check if two values are deeply equal
+pub fn deep_equal(a : TomlValue, b : TomlValue) -> Bool {
+  if a.type_name() != b.type_name() { return false }
+  match a {
+    TomlValue::Str(x) => { match b { TomlValue::Str(y) => x == y; _ => false } }
+    TomlValue::Int(x) => { match b { TomlValue::Int(y) => x == y; _ => false } }
+    TomlValue::Float(x) => { match b { TomlValue::Float(y) => x == y; _ => false } }
+    TomlValue::Bool(x) => { match b { TomlValue::Bool(y) => x == y; _ => false } }
+    TomlValue::OffsetDateTime(x) => { match b { TomlValue::OffsetDateTime(y) => x.datetime == y.datetime; _ => false } }
+    TomlValue::LocalDateTime(x) => { match b { TomlValue::LocalDateTime(y) => x.datetime == y.datetime; _ => false } }
+    TomlValue::LocalDate(x) => { match b { TomlValue::LocalDate(y) => x.date == y.date; _ => false } }
+    TomlValue::LocalTime(x) => { match b { TomlValue::LocalTime(y) => x.time == y.time; _ => false } }
+    TomlValue::Array(x) => {
+      match b {
+        TomlValue::Array(y) => {
+          if x.length() != y.length() { return false }
+          let mut i = 0
+          while i < x.length() {
+            if !deep_equal(x[i], y[i]) { return false }
+            i = i + 1
+          }
+          true
+        }
+        _ => false
+      }
+    }
+    TomlValue::Table(x) => {
+      match b {
+        TomlValue::Table(y) => {
+          if x.length() != y.length() { return false }
+          let x_entries = x.to_array()
+          let mut i = 0
+          while i < x_entries.length() {
+            match y.get(x_entries[i].0) {
+              Some(yv) => { if !deep_equal(x_entries[i].1, yv) { return false } }
+              None => return false
+            }
+            i = i + 1
+          }
+          true
+        }
+        _ => false
+      }
+    }
+    TomlValue::InlineTable(x) => {
+      match b {
+        TomlValue::InlineTable(y) => {
+          if x.length() != y.length() { return false }
+          let x_entries = x.to_array()
+          let mut i = 0
+          while i < x_entries.length() {
+            match y.get(x_entries[i].0) {
+              Some(yv) => { if !deep_equal(x_entries[i].1, yv) { return false } }
+              None => return false
+            }
+            i = i + 1
+          }
+          true
+        }
+        _ => false
+      }
+    }
+  }
+}
+
+// ============================================================
 // SECTION 9: Query API
 // ============================================================
 

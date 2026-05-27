@@ -2574,6 +2574,337 @@ pub fn deep_equal(a : TomlValue, b : TomlValue) -> Bool {
 }
 
 // ============================================================
+// SECTION 8F: Statistics Module
+// ============================================================
+/// Statistics about a TOML document
+pub struct TomlStats {
+  total_keys : Int
+  total_strings : Int
+  total_ints : Int
+  total_floats : Int
+  total_bools : Int
+  total_arrays : Int
+  total_tables : Int
+  total_inline_tables : Int
+  total_datetimes : Int
+  max_depth : Int
+  max_array_length : Int
+}
+
+/// Compute statistics for a TomlValue
+pub fn compute_stats(value : TomlValue) -> TomlStats {
+  stats_recursive(value, 0)
+}
+
+fn stats_recursive(value : TomlValue, depth : Int) -> TomlStats {
+  match value {
+    TomlValue::Str(_) => {
+      {
+        total_keys: 1, total_strings: 1, total_ints: 0, total_floats: 0,
+        total_bools: 0, total_arrays: 0, total_tables: 0, total_inline_tables: 0,
+        total_datetimes: 0, max_depth: depth, max_array_length: 0
+      }
+    }
+    TomlValue::Int(_) => {
+      {
+        total_keys: 1, total_strings: 0, total_ints: 1, total_floats: 0,
+        total_bools: 0, total_arrays: 0, total_tables: 0, total_inline_tables: 0,
+        total_datetimes: 0, max_depth: depth, max_array_length: 0
+      }
+    }
+    TomlValue::Float(_) => {
+      {
+        total_keys: 1, total_strings: 0, total_ints: 0, total_floats: 1,
+        total_bools: 0, total_arrays: 0, total_tables: 0, total_inline_tables: 0,
+        total_datetimes: 0, max_depth: depth, max_array_length: 0
+      }
+    }
+    TomlValue::Bool(_) => {
+      {
+        total_keys: 1, total_strings: 0, total_ints: 0, total_floats: 0,
+        total_bools: 1, total_arrays: 0, total_tables: 0, total_inline_tables: 0,
+        total_datetimes: 0, max_depth: depth, max_array_length: 0
+      }
+    }
+    TomlValue::OffsetDateTime(_) | TomlValue::LocalDateTime(_) | TomlValue::LocalDate(_) | TomlValue::LocalTime(_) => {
+      {
+        total_keys: 1, total_strings: 0, total_ints: 0, total_floats: 0,
+        total_bools: 0, total_arrays: 0, total_tables: 0, total_inline_tables: 0,
+        total_datetimes: 1, max_depth: depth, max_array_length: 0
+      }
+    }
+    TomlValue::Array(arr) => {
+      let mut s : TomlStats = {
+        total_keys: 1, total_strings: 0, total_ints: 0, total_floats: 0,
+        total_bools: 0, total_arrays: 1, total_tables: 0, total_inline_tables: 0,
+        total_datetimes: 0, max_depth: depth, max_array_length: arr.length()
+      }
+      let mut i = 0
+      while i < arr.length() {
+        let sub = stats_recursive(arr[i], depth + 1)
+        s = merge_stats(s, sub)
+        i = i + 1
+      }
+      s
+    }
+    TomlValue::Table(t) => {
+      let mut s : TomlStats = {
+        total_keys: t.length(), total_strings: 0, total_ints: 0, total_floats: 0,
+        total_bools: 0, total_arrays: 0, total_tables: 1, total_inline_tables: 0,
+        total_datetimes: 0, max_depth: depth, max_array_length: 0
+      }
+      let entries = t.to_array()
+      let mut j = 0
+      while j < entries.length() {
+        let sub = stats_recursive(entries[j].1, depth + 1)
+        s = merge_stats(s, sub)
+        j = j + 1
+      }
+      s
+    }
+    TomlValue::InlineTable(t) => {
+      let mut s : TomlStats = {
+        total_keys: t.length(), total_strings: 0, total_ints: 0, total_floats: 0,
+        total_bools: 0, total_arrays: 0, total_tables: 0, total_inline_tables: 1,
+        total_datetimes: 0, max_depth: depth, max_array_length: 0
+      }
+      let entries = t.to_array()
+      let mut k = 0
+      while k < entries.length() {
+        let sub = stats_recursive(entries[k].1, depth + 1)
+        s = merge_stats(s, sub)
+        k = k + 1
+      }
+      s
+    }
+  }
+}
+
+fn merge_stats(a : TomlStats, b : TomlStats) -> TomlStats {
+  {
+    total_keys: a.total_keys + b.total_keys,
+    total_strings: a.total_strings + b.total_strings,
+    total_ints: a.total_ints + b.total_ints,
+    total_floats: a.total_floats + b.total_floats,
+    total_bools: a.total_bools + b.total_bools,
+    total_arrays: a.total_arrays + b.total_arrays,
+    total_tables: a.total_tables + b.total_tables,
+    total_inline_tables: a.total_inline_tables + b.total_inline_tables,
+    total_datetimes: a.total_datetimes + b.total_datetimes,
+    max_depth: if a.max_depth > b.max_depth { a.max_depth } else { b.max_depth },
+    max_array_length: if a.max_array_length > b.max_array_length { a.max_array_length } else { b.max_array_length }
+  }
+}
+
+pub impl Show for TomlStats with to_string(self : TomlStats) -> String {
+  let s = "TOML Stats:"
+  let s = s + "\n  Keys: " + self.total_keys.to_string()
+  let s = s + "\n  Strings: " + self.total_strings.to_string()
+  let s = s + "\n  Integers: " + self.total_ints.to_string()
+  let s = s + "\n  Floats: " + self.total_floats.to_string()
+  let s = s + "\n  Booleans: " + self.total_bools.to_string()
+  let s = s + "\n  Arrays: " + self.total_arrays.to_string()
+  let s = s + "\n  Tables: " + self.total_tables.to_string()
+  let s = s + "\n  Inline Tables: " + self.total_inline_tables.to_string()
+  let s = s + "\n  Date-Times: " + self.total_datetimes.to_string()
+  let s = s + "\n  Max Depth: " + self.max_depth.to_string()
+  let s = s + "\n  Max Array Length: " + self.max_array_length.to_string()
+  s
+}
+
+// ============================================================
+// SECTION 8G: Pretty Print and Serialization Options
+// ============================================================
+/// Serialize with pretty printing (multi-line for arrays/tables)
+pub fn serialize_pretty(value : TomlValue) -> String {
+  serialize_with_options(value, true, false, 2)
+}
+
+/// Serialize with sorted keys
+pub fn serialize_sorted(value : TomlValue) -> String {
+  serialize_with_options(value, false, true, 0)
+}
+
+/// Serialize with custom options
+pub fn serialize_with_options(value : TomlValue, pretty : Bool, sorted : Bool, indent_size : Int) -> String {
+  ser_value_opts(value, 0, pretty, sorted, indent_size)
+}
+
+fn ser_value_opts(value : TomlValue, depth : Int, pretty : Bool, sorted : Bool, indent : Int) -> String {
+  let pad = String::make(depth * indent, Int::unsafe_to_char(32))
+  match value {
+    TomlValue::Str(s) => ser_string(s)
+    TomlValue::Int(i) => i.to_string()
+    TomlValue::Float(f) => ser_float(f)
+    TomlValue::Bool(b) => if b { "true" } else { "false" }
+    TomlValue::OffsetDateTime(dt) => dt.datetime
+    TomlValue::LocalDateTime(dt) => dt.datetime
+    TomlValue::LocalDate(d) => d.date
+    TomlValue::LocalTime(t) => t.time
+    TomlValue::Array(arr) => ser_array_opts(arr, depth, pretty, sorted, indent)
+    TomlValue::Table(t) => ser_table_opts(t, depth, pretty, sorted, indent)
+    TomlValue::InlineTable(t) => ser_inline_table_opts(t, pretty, sorted, indent)
+  }
+}
+
+fn ser_array_opts(arr : Array[TomlValue], depth : Int, pretty : Bool, sorted : Bool, indent : Int) -> String {
+  if arr.length() == 0 { return "[]" }
+  if pretty {
+    let pad1 = String::make((depth + 1) * indent, Int::unsafe_to_char(32))
+    let pad0 = String::make(depth * indent, Int::unsafe_to_char(32))
+    let mut r = "[\n"
+    let mut i = 0
+    while i < arr.length() {
+      if i > 0 { r = r + ",\n" }
+      r = r + pad1 + ser_value_opts(arr[i], depth + 1, pretty, sorted, indent)
+      i = i + 1
+    }
+    return r + "\n" + pad0 + "]"
+  } else if arr.length() <= 4 {
+    let mut r = "["
+    let mut i = 0
+    while i < arr.length() {
+      if i > 0 { r = r + ", " }
+      r = r + ser_value_opts(arr[i], depth, pretty, sorted, indent)
+      i = i + 1
+    }
+    return r + "]"
+  } else {
+    let pad1 = String::make((depth + 1) * indent, Int::unsafe_to_char(32))
+    let pad0 = String::make(depth * indent, Int::unsafe_to_char(32))
+    let mut r = "[\n"
+    let mut i = 0
+    while i < arr.length() {
+      if i > 0 { r = r + ",\n" }
+      r = r + pad1 + ser_value_opts(arr[i], depth + 1, pretty, sorted, indent)
+      i = i + 1
+    }
+    return r + "\n" + pad0 + "]"
+  }
+}
+
+fn ser_table_opts(table : Map[String, TomlValue], depth : Int, pretty : Bool, sorted : Bool, indent : Int) -> String {
+  if table.length() == 0 { return "{}" }
+  let pad = String::make(depth * indent, Int::unsafe_to_char(32))
+  let entries = table.to_array()
+  let mut r = ""
+  let mut i = 0
+  while i < entries.length() {
+    if i > 0 { r = r + "\n" }
+    match entries[i].1 {
+      TomlValue::Table(_) | TomlValue::Array(_) => { let _ = 0 }
+      _ => {
+        r = r + pad + ser_key(entries[i].0) + " = " + ser_value_opts(entries[i].1, depth + 1, pretty, sorted, indent)
+      }
+    }
+    i = i + 1
+  }
+  r
+}
+
+fn ser_inline_table_opts(table : Map[String, TomlValue], pretty : Bool, sorted : Bool, indent : Int) -> String {
+  if table.length() == 0 { return "{}" }
+  let entries = table.to_array()
+  if pretty {
+    let mut r = "{\n"
+    let mut i = 0
+    while i < entries.length() {
+      if i > 0 { r = r + ",\n" }
+      r = r + "  " + ser_key(entries[i].0) + " = " + ser_value_opts(entries[i].1, 1, pretty, sorted, indent)
+      i = i + 1
+    }
+    return r + "\n}"
+  }
+  let mut r = "{ "
+  let mut i = 0
+  while i < entries.length() {
+    if i > 0 { r = r + ", " }
+    r = r + ser_key(entries[i].0) + " = " + ser_value_opts(entries[i].1, 0, pretty, sorted, indent)
+    i = i + 1
+  }
+  return r + " }"
+}
+
+/// Serialize to compact format (no unnecessary whitespace)
+pub fn serialize_compact(value : TomlValue) -> String {
+  serialize_with_options(value, false, false, 0)
+}
+
+/// Convert TomlValue to JSON-like string for debugging
+pub fn to_json_like(value : TomlValue) -> String {
+  let dq = String::make(1, Int::unsafe_to_char(34))
+  match value {
+    TomlValue::Str(s) => dq + ser_escape(s) + dq
+    TomlValue::Int(i) => i.to_string()
+    TomlValue::Float(f) => f.to_string()
+    TomlValue::Bool(b) => if b { "true" } else { "false" }
+    TomlValue::OffsetDateTime(dt) => dq + dt.datetime + dq
+    TomlValue::LocalDateTime(dt) => dq + dt.datetime + dq
+    TomlValue::LocalDate(d) => dq + d.date + dq
+    TomlValue::LocalTime(t) => dq + t.time + dq
+    TomlValue::Array(arr) => {
+      let mut r = "["
+      let mut i = 0
+      while i < arr.length() {
+        if i > 0 { r = r + ", " }
+        r = r + to_json_like(arr[i])
+        i = i + 1
+      }
+      r + "]"
+    }
+    TomlValue::Table(t) | TomlValue::InlineTable(t) => {
+      let entries = t.to_array()
+      let mut r = "{"
+      let mut i = 0
+      while i < entries.length() {
+        if i > 0 { r = r + ", " }
+        r = r + dq + entries[i].0 + dq + ": " + to_json_like(entries[i].1)
+        i = i + 1
+      }
+      r + "}"
+    }
+  }
+}
+
+/// Flatten a TomlValue to a map of dotted paths to values
+pub fn flatten(value : TomlValue) -> Map[String, TomlValue] {
+  let result : Map[String, TomlValue] = Map([])
+  flatten_recursive(value, "", result)
+}
+
+fn flatten_recursive(value : TomlValue, prefix : String, result : Map[String, TomlValue]) -> Map[String, TomlValue] {
+  match value {
+    TomlValue::Table(t) | TomlValue::InlineTable(t) => {
+      let entries = t.to_array()
+      let mut r = result
+      let mut i = 0
+      while i < entries.length() {
+        let fp = if prefix == "" { entries[i].0 } else { prefix + "." + entries[i].0 }
+        r = flatten_recursive(entries[i].1, fp, r)
+        i = i + 1
+      }
+      r
+    }
+    TomlValue::Array(arr) => {
+      let mut r = result
+      let mut j = 0
+      while j < arr.length() {
+        let fp = prefix + "[" + j.to_string() + "]"
+        r = flatten_recursive(arr[j], fp, r)
+        j = j + 1
+      }
+      r
+    }
+    _ => {
+      if prefix.length() > 0 {
+        result.set(prefix, value)
+        result
+      } else { result }
+    }
+  }
+}
+
+// ============================================================
 // SECTION 9: Query API
 // ============================================================
 

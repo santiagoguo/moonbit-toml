@@ -1,0 +1,153 @@
+<h1 id="moonbit-国产基础软件生态开源大赛-2026-项目申报书">MoonBit
+国产基础软件生态开源大赛 2026 项目申报书</h1>
+<h2 id="项目基本信息">项目基本信息</h2>
+<table>
+<thead>
+<tr>
+<th>字段</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>项目名称</strong></td>
+<td>moonbit-toml</td>
+</tr>
+<tr>
+<td><strong>项目描述</strong></td>
+<td>高性能 TOML 解析与序列化库</td>
+</tr>
+<tr>
+<td><strong>申报人</strong></td>
+<td>santiagoguo</td>
+</tr>
+<tr>
+<td><strong>联系邮箱</strong></td>
+<td>344918208@qq.com</td>
+</tr>
+<tr>
+<td><strong>项目仓库</strong></td>
+<td>https://github.com/santiagoguo/moonbit-toml</td>
+</tr>
+<tr>
+<td><strong>项目类型</strong></td>
+<td>原创生态库</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="一项目背景与意义">一、项目背景与意义</h2>
+<p>TOML (Tom’s Obvious, Minimal Language)
+是一种广泛使用的配置文件格式，被 Rust、Python、Go
+等语言的生态广泛采用。目前 MoonBit 语言生态中尚无成熟的 TOML
+解析库。</p>
+<p>本项目旨在为 MoonBit 提供一个<strong>完整、高效、易用的 TOML
+解析与序列化库</strong>，填补 MoonBit
+在配置文件处理领域的基础设施空白，助力 MoonBit 生态的完善。</p>
+<hr />
+<h2 id="二技术方案">二、技术方案</h2>
+<h3 id="核心架构">2.1 核心架构</h3>
+<pre><code>┌─────────────────────────────────────────────┐
+│                  moonbit-toml                │
+├─────────────────────────────────────────────┤
+│  parse_toml(input: String)                  │
+│       → Map[String, TomlValue]              │
+│                                             │
+│  ┌───────────┐  ┌──────────┐  ┌───────────┐ │
+│  │ ParseState│→ │ Lexer    │→ │  Parser   │ │
+│  │ (位置管理) │  │ (词法分析)│  │ (语法分析)│ │
+│  └───────────┘  └──────────┘  └───────────┘ │
+├─────────────────────────────────────────────┤
+│              TomlValue 数据类型              │
+│  Str | Int | Float | Bool | Array | Table   │
+└─────────────────────────────────────────────┘</code></pre>
+<h3 id="已实现功能">2.2 已实现功能</h3>
+<ul>
+<li>✅ 基础键值对解析（字符串、整数、浮点数、布尔值）</li>
+<li>✅ 表解析（<code>[section]</code>）</li>
+<li>✅ 嵌套表（<code>[server.production]</code>）</li>
+<li>✅ 数组解析（<code>[1, 2, "mixed"]</code>）</li>
+<li>✅ 注释处理（<code># comments</code>）</li>
+<li>✅ 字符串转义（<code>\n</code>, <code>\t</code>, <code>\"</code>,
+<code>\\</code>）</li>
+<li>✅ 7 个白盒单元测试</li>
+</ul>
+<h3 id="技术亮点">2.3 技术亮点</h3>
+<ol type="1">
+<li><strong>零拷贝设计</strong>：利用 MoonBit 的 <code>StringView</code>
+实现高效字符串处理</li>
+<li><strong>函数式风格</strong>：不可变状态传递，易于推理和测试</li>
+<li><strong>类型安全</strong>：完整的 <code>TomlValue</code>
+代数数据类型，编译期类型检查</li>
+</ol>
+<hr />
+<h2 id="三验收标准">三、验收标准</h2>
+<table>
+<thead>
+<tr>
+<th>指标</th>
+<th>目标值</th>
+<th>当前进度</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>代码行数</td>
+<td>4k~10k LOC</td>
+<td>~400 行 (持续增加中)</td>
+</tr>
+<tr>
+<td>单元测试</td>
+<td>覆盖率 &gt; 80%</td>
+<td>7 个测试用例</td>
+</tr>
+<tr>
+<td>TOML 规范支持</td>
+<td>支持 v1.0 核心特性</td>
+<td>基础功能已实现</td>
+</tr>
+<tr>
+<td>文档完整性</td>
+<td>README + API 文档</td>
+<td>README 已完成</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="四开发计划">四、开发计划</h2>
+<table>
+<thead>
+<tr>
+<th>阶段</th>
+<th>时间</th>
+<th>任务</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>第一阶段</td>
+<td>5月-6月</td>
+<td>基础解析器、核心数据类型</td>
+</tr>
+<tr>
+<td>第二阶段</td>
+<td>6月-7月</td>
+<td>数组表、日期时间、序列化输出</td>
+</tr>
+<tr>
+<td>第三阶段</td>
+<td>7月</td>
+<td>错误处理完善、测试覆盖、文档编写</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="五预期成果">五、预期成果</h2>
+<ol type="1">
+<li><strong>可发布的基础库</strong>：支持 MoonBit 包管理器分发</li>
+<li><strong>完整测试套件</strong>：兼容 <code>toml-test</code>
+标准测试集</li>
+<li><strong>中文技术文档</strong>：降低 MoonBit 新手学习门槛</li>
+</ol>
+<hr />
+<p><strong>申报日期</strong>: 2026年5月26日</p>

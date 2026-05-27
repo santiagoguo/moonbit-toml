@@ -1635,6 +1635,34 @@ fn table_get_nested(table : Map[String, TomlValue], dotted : String) -> TomlValu
 }
 
 // Parse the full document
+/// Ensure all parent tables exist for a dotted key path
+fn ensure_table_path(table : Map[String, TomlValue], dotted : String) -> Map[String, TomlValue] {
+  let parts = dotted.split(".").to_array().map(fn(sv) { sv.to_owned() })
+  if parts.length() == 0 { return table }
+  let mut r = table
+  let mut path_so_far = ""
+  let mut pi = 0
+  while pi < parts.length() - 1 {
+    let key = parts[pi]
+    let full = if path_so_far == "" { key } else { path_so_far + "." + key }
+    match r.get(key) {
+      Some(TomlValue::Table(_)) => { let _ = 0 }
+      Some(TomlValue::InlineTable(t)) => {
+        let updated = r
+        updated.set(key, TomlValue::Table(t))
+        r = updated
+      }
+      _ => {
+        let new_tbl : Map[String, TomlValue] = Map([])
+        r = set_dotted(r, full, TomlValue::Table(new_tbl))
+      }
+    }
+    path_so_far = full
+    pi = pi + 1
+  }
+  r
+}
+
 fn ps_document(tokens : Array[Token], st : ParserState) -> TomlResult[(TomlValue, ParserState)] {
   let mut table : Map[String, TomlValue] = Map([])
   let mut s = ps_skip_nl(st)
@@ -1662,7 +1690,7 @@ fn ps_document(tokens : Array[Token], st : ParserState) -> TomlResult[(TomlValue
                   match ps_table_header(s) {
                     TomlResult::Err(e) => return TomlResult::Err(e)
                     TomlResult::Ok((key, s2)) => {
-                      table = set_dotted(table, key, TomlValue::Table(Map([])))
+                      table = ensure_table_path(table, key)
                       s = ps_skip_nl(s2)
                     }
                   }

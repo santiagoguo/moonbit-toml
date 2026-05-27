@@ -1979,6 +1979,239 @@ pub fn builder_serialize(table : Map[String, TomlValue]) -> String {
 }
 
 // ============================================================
+// SECTION 8C: Validation Module
+// ============================================================
+/// Validation result for a TOML value
+pub struct ValidationResult {
+  valid : Bool
+  errors : Array[String]
+  warnings : Array[String]
+}
+
+fn validation_ok() -> ValidationResult {
+  { valid: true, errors: [], warnings: [] }
+}
+
+fn validation_fail(errors : Array[String]) -> ValidationResult {
+  { valid: false, errors: errors, warnings: [] }
+}
+
+fn validation_warn(warnings : Array[String]) -> ValidationResult {
+  { valid: true, errors: [], warnings: warnings }
+}
+
+pub impl Show for ValidationResult with to_string(self : ValidationResult) -> String {
+  if self.valid {
+    "Valid" + (if self.warnings.length() > 0 { " (with " + self.warnings.length().to_string() + " warnings)" } else { "" })
+  } else {
+    "Invalid: " + self.errors.length().to_string() + " error(s)"
+  }
+}
+
+/// Validate a TomlValue for common issues
+pub fn validate(value : TomlValue) -> ValidationResult {
+  let (errors, warnings) = validate_recursive(value, "", 0)
+  if errors.length() > 0 {
+    validation_fail(errors)
+  } else if warnings.length() > 0 {
+    validation_warn(warnings)
+  } else {
+    validation_ok()
+  }
+}
+
+fn validate_recursive(value : TomlValue, path : String, depth : Int) -> (Array[String], Array[String]) {
+  let errors : Array[String] = []
+  let warnings : Array[String] = []
+  // Check depth
+  if depth > 100 {
+    errors.push("Excessive nesting depth at: " + path)
+    return (errors, warnings)
+  }
+  match value {
+    TomlValue::Str(s) => {
+      let mut i = 0
+      while i < s.length() {
+        let c = s[i].to_int()
+        if c < 32 && c != 9 && c != 10 && c != 13 {
+          errors.push("Control character at position " + i.to_string() + " in string at: " + path)
+        }
+        i = i + 1
+      }
+    }
+    TomlValue::Float(f) => {
+      let s = f.to_string()
+      if s == "nan" || s == "inf" || s == "-inf" {
+        warnings.push("Special float value (" + s + ") at: " + path)
+      }
+    }
+    TomlValue::Array(arr) => {
+      if arr.length() > 10000 {
+        warnings.push("Large array (" + arr.length().to_string() + " elements) at: " + path)
+      }
+      if arr.length() > 1 {
+        let first_type = arr[0].type_name()
+        let mut j = 1
+        while j < arr.length() {
+          if arr[j].type_name() != first_type {
+            warnings.push("Mixed types in array at: " + path)
+            break
+          }
+          j = j + 1
+        }
+      }
+      let mut k = 0
+      while k < arr.length() {
+        let (sub_e, sub_w) = validate_recursive(arr[k], path + "[" + k.to_string() + "]", depth + 1)
+        let mut se = 0
+        while se < sub_e.length() { errors.push(sub_e[se]); se = se + 1 }
+        let mut sw = 0
+        while sw < sub_w.length() { warnings.push(sub_w[sw]); sw = sw + 1 }
+        k = k + 1
+      }
+    }
+    TomlValue::Table(t) | TomlValue::InlineTable(t) => {
+      let entries = t.to_array()
+      let mut m = 0
+      while m < entries.length() {
+        let key = entries[m].0
+        if key.length() == 0 {
+          errors.push("Empty key found at: " + path)
+        }
+        if key.length() > 100 {
+          warnings.push("Very long key (" + key.length().to_string() + " chars) at: " + path)
+        }
+        let new_path = if path == "" { key } else { path + "." + key }
+        let (sub_e, sub_w) = validate_recursive(entries[m].1, new_path, depth + 1)
+        let mut se = 0
+        while se < sub_e.length() { errors.push(sub_e[se]); se = se + 1 }
+        let mut sw = 0
+        while sw < sub_w.length() { warnings.push(sub_w[sw]); sw = sw + 1 }
+        m = m + 1
+      }
+    }
+    _ => { let _ = 0 }
+  }
+  (errors, warnings)
+}
+
+/// Validate that all datetime strings are well-formed
+pub fn validate_datetimes(value : TomlValue) -> ValidationResult {
+  let errors = collect_datetime_errors(value, "")
+  if errors.length() > 0 { validation_fail(errors) } else { validation_ok() }
+}
+
+fn collect_datetime_errors(value : TomlValue, path : String) -> Array[String] {
+  let errors : Array[String] = []
+  match value {
+    TomlValue::OffsetDateTime(dt) => {
+      if !is_valid_datetime_string(dt.datetime) {
+        errors.push("Invalid date-time format at: " + path)
+      }
+    }
+    TomlValue::LocalDateTime(dt) => {
+      if !is_valid_datetime_string(dt.datetime) {
+        errors.push("Invalid local-date-time format at: " + path)
+      }
+    }
+    TomlValue::LocalDate(d) => {
+      if !is_valid_date_string(d.date) {
+        errors.push("Invalid date format at: " + path)
+      }
+    }
+    TomlValue::LocalTime(t) => {
+      if !is_valid_time_string(t.time) {
+        errors.push("Invalid time format at: " + path)
+      }
+    }
+    TomlValue::Array(arr) => {
+      let mut i = 0
+      while i < arr.length() {
+        let sub = collect_datetime_errors(arr[i], path + "[" + i.to_string() + "]")
+        let mut j = 0
+        while j < sub.length() { errors.push(sub[j]); j = j + 1 }
+        i = i + 1
+      }
+    }
+    TomlValue::Table(t) | TomlValue::InlineTable(t) => {
+      let entries = t.to_array()
+      let mut k = 0
+      while k < entries.length() {
+        let sub = collect_datetime_errors(entries[k].1, path + "." + entries[k].0)
+        let mut j = 0
+        while j < sub.length() { errors.push(sub[j]); j = j + 1 }
+        k = k + 1
+      }
+    }
+    _ => { let _ = 0 }
+  }
+  errors
+}
+
+fn is_valid_datetime_string(s : String) -> Bool {
+  // Basic format check: YYYY-MM-DDTHH:MM:SS...
+  if s.length() < 19 { return false }
+  // Check basic structure
+  let chars = s.to_array().map(fn(c) { c.to_int() })
+  if chars.length() < 19 { return false }
+  // YYYY-MM-DDTHH:MM:SS
+  if chars[4] != 45 || chars[7] != 45 || chars[10] != 84 || chars[13] != 58 || chars[16] != 58 {
+    return false
+  }
+  true
+}
+
+fn is_valid_date_string(s : String) -> Bool {
+  // YYYY-MM-DD
+  if s.length() != 10 { return false }
+  let chars = s.to_array().map(fn(c) { c.to_int() })
+  if chars[4] != 45 || chars[7] != 45 { return false }
+  true
+}
+
+fn is_valid_time_string(s : String) -> Bool {
+  // HH:MM:SS or HH:MM:SS.fractional
+  if s.length() < 8 { return false }
+  let chars = s.to_array().map(fn(c) { c.to_int() })
+  if chars[2] != 58 || chars[5] != 58 { return false }
+  true
+}
+
+/// Validate a parsed TOML string
+pub fn validate_source(source : String) -> ValidationResult {
+  match parse(source) {
+    Some(val) => validate(val)
+    None => validation_fail(["Failed to parse TOML source"])
+  }
+}
+
+/// Check if a TomlValue contains only a single type (recursively)
+pub fn is_homogeneous(value : TomlValue) -> Bool {
+  match value {
+    TomlValue::Array(arr) => {
+      if arr.length() <= 1 { return true }
+      let first_type = arr[0].type_name()
+      let mut i = 1
+      while i < arr.length() {
+        if arr[i].type_name() != first_type { return false }
+        i = i + 1
+      }
+      true
+    }
+    TomlValue::Table(t) | TomlValue::InlineTable(t) => {
+      let entries = t.to_array()
+      let mut j = 0
+      while j < entries.length() {
+        if !is_homogeneous(entries[j].1) { return false }
+        j = j + 1
+      }
+      true
+    }
+    _ => true
+  }
+}
+
+// ============================================================
 // SECTION 9: Query API
 // ============================================================
 

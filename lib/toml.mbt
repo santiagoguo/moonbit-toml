@@ -2905,6 +2905,538 @@ fn flatten_recursive(value : TomlValue, prefix : String, result : Map[String, To
 }
 
 // ============================================================
+// SECTION 8H: Path Expression Module
+// ============================================================
+/// Represents a component in a TOML path
+pub enum PathSegment {
+  Key(String)
+  Index(Int)
+}
+
+/// A path to a value in a TOML document
+pub struct TomlPath {
+  segments : Array[PathSegment]
+}
+
+fn parse_int(s : String) -> Int {
+  let mut res = 0
+  let chars = s.to_array()
+  let mut i = 0
+  let is_neg = chars.length() > 0 && chars[0] == Int::unsafe_to_char(45)
+  let start = if is_neg { 1 } else { 0 }
+  let _ = start
+  while i < chars.length() {
+    let c = chars[i]
+    if c >= Int::unsafe_to_char(48) && c <= Int::unsafe_to_char(57) {
+      res = res * 10 + (c.to_int() - 48)
+    }
+    i = i + 1
+  }
+  if is_neg { -res } else { res }
+}
+
+/// Parse a dotted path string into a TomlPath (e.g., "server.host")
+pub fn parse_path(path_str : String) -> TomlPath {
+  let segs : Array[PathSegment] = []
+  let parts = path_str.split(".").to_array().map(fn(sv) { sv.to_owned() })
+  let mut i = 0
+  while i < parts.length() {
+    let part = parts[i]
+    // Simple implementation: if starts with digit, it's an index, else Key
+    // Handles "key[0]" via simple check
+    let has_bracket = part.find("[")
+    match has_bracket {
+      Some(idx) => {
+        let key_part = part.substring(end=idx)
+        if key_part.length() > 0 { segs.push(PathSegment::Key(key_part)) }
+        let bracket_content = part.substring(start=idx + 1, end=part.length() - 1)
+        segs.push(PathSegment::Index(parse_int(bracket_content)))
+      }
+      None => {
+        segs.push(PathSegment::Key(part))
+      }
+    }
+    i = i + 1
+  }
+  { segments: segs }
+}
+
+/// Resolve a TomlPath to a TomlValue?
+pub fn resolve_path(root : TomlValue, path : TomlPath) -> TomlValue? {
+  let mut current = root
+  let mut i = 0
+  while i < path.segments.length() {
+    match path.segments[i] {
+      PathSegment::Key(k) => {
+        match current {
+          TomlValue::Table(t) | TomlValue::InlineTable(t) => {
+            match t.get(k) {
+              Some(v) => current = v
+              None => return None
+            }
+          }
+          _ => return None
+        }
+      }
+      PathSegment::Index(idx) => {
+        match current {
+          TomlValue::Array(arr) => {
+            if idx >= 0 && idx < arr.length() {
+              current = arr[idx]
+            } else {
+              return None
+            }
+          }
+          _ => return None
+        }
+      }
+    }
+    i = i + 1
+  }
+  Some(current)
+}
+
+/// Set a value at a path, returning a new TomlValue with the modification
+pub fn set_path(root : TomlValue, path : TomlPath, new_val : TomlValue) -> TomlValue? {
+  if path.segments.length() == 0 { return Some(new_val) }
+  set_path_recursive(root, path.segments, 0, new_val)
+}
+
+fn set_path_recursive(current : TomlValue, segments : Array[PathSegment], depth : Int, new_val : TomlValue) -> TomlValue? {
+  if depth >= segments.length() { return Some(new_val) }
+  let seg = segments[depth]
+
+  match seg {
+    PathSegment::Key(k) => {
+      match current {
+        TomlValue::Table(t) => {
+          let new_t : Map[String, TomlValue] = Map([])
+          let entries = t.to_array()
+          let mut i = 0
+          while i < entries.length() {
+            let ek = entries[i].0
+            let ev = entries[i].1
+            if ek == k {
+              match set_path_recursive(ev, segments, depth + 1, new_val) {
+                Some(updated) => new_t.set(ek, updated)
+                None => return None
+              }
+            } else {
+              new_t.set(ek, ev)
+            }
+            i = i + 1
+          }
+          // Handle insertion if key not found
+          if (match t.get(k) { None => true; _ => false }) {
+             if depth == segments.length() - 1 {
+               new_t.set(k, new_val)
+             } else {
+               // Need to create intermediate table
+               let sub_t : Map[String, TomlValue] = Map([])
+               let sub_v = set_path_recursive(TomlValue::Table(sub_t), segments, depth + 1, new_val)
+               match sub_v {
+                 Some(v) => new_t.set(k, v)
+                 None => return None
+               }
+             }
+          }
+          Some(TomlValue::Table(new_t))
+        }
+        TomlValue::InlineTable(t) => {
+           match t.get(k) {
+             Some(existing) => {
+               match set_path_recursive(existing, segments, depth + 1, new_val) {
+                 Some(updated) => {
+                   let new_t : Map[String, TomlValue] = Map([])
+                   let entries = t.to_array()
+                   let mut i = 0
+                   while i < entries.length() { new_t.set(entries[i].0, entries[i].1); i = i + 1 }
+                   new_t.set(k, updated)
+                   Some(TomlValue::InlineTable(new_t))
+                 }
+                 None => None
+               }
+             }
+             None => {
+               if depth == segments.length() - 1 {
+                 let new_t : Map[String, TomlValue] = Map([])
+                 let entries = t.to_array()
+                 let mut i = 0
+                 while i < entries.length() { new_t.set(entries[i].0, entries[i].1); i = i + 1 }
+                 new_t.set(k, new_val)
+                 Some(TomlValue::InlineTable(new_t))
+               } else {
+                 None
+               }
+             }
+           }
+        }
+        _ => None
+      }
+    }
+    PathSegment::Index(idx) => {
+      match current {
+        TomlValue::Array(arr) => {
+          if idx >= 0 && idx < arr.length() {
+            match set_path_recursive(arr[idx], segments, depth + 1, new_val) {
+              Some(updated) => {
+                let new_arr : Array[TomlValue] = []
+                let mut j = 0
+                while j < arr.length() {
+                  if j == idx { new_arr.push(updated) } else { new_arr.push(arr[j]) }
+                  j = j + 1
+                }
+                Some(TomlValue::Array(new_arr))
+              }
+              None => None
+            }
+          } else {
+            None
+          }
+        }
+        _ => None
+      }
+    }
+  }
+}
+
+// ============================================================
+// SECTION 8I: Transformation Module
+// ============================================================
+/// Map a function over all leaf values in the TOML tree
+pub fn map_leaves(value : TomlValue, f : (TomlValue) -> TomlValue) -> TomlValue {
+  match value {
+    TomlValue::Array(arr) => {
+      let result : Array[TomlValue] = []
+      let mut i = 0
+      while i < arr.length() {
+        result.push(map_leaves(arr[i], f))
+        i = i + 1
+      }
+      TomlValue::Array(result)
+    }
+    TomlValue::Table(t) => {
+      let result : Map[String, TomlValue] = Map([])
+      let entries = t.to_array()
+      let mut j = 0
+      while j < entries.length() {
+        result.set(entries[j].0, map_leaves(entries[j].1, f))
+        j = j + 1
+      }
+      TomlValue::Table(result)
+    }
+    TomlValue::InlineTable(t) => {
+      let result : Map[String, TomlValue] = Map([])
+      let entries = t.to_array()
+      let mut k = 0
+      while k < entries.length() {
+        result.set(entries[k].0, map_leaves(entries[k].1, f))
+        k = k + 1
+      }
+      TomlValue::InlineTable(result)
+    }
+    _ => f(value)
+  }
+}
+
+/// Filter keys in tables based on a predicate
+pub fn filter_keys(value : TomlValue, pred : (String) -> Bool) -> TomlValue {
+  match value {
+    TomlValue::Array(arr) => {
+      let result : Array[TomlValue] = []
+      let mut i = 0
+      while i < arr.length() {
+        result.push(filter_keys(arr[i], pred))
+        i = i + 1
+      }
+      TomlValue::Array(result)
+    }
+    TomlValue::Table(t) => {
+      let result : Map[String, TomlValue] = Map([])
+      let entries = t.to_array()
+      let mut j = 0
+      while j < entries.length() {
+        let k = entries[j].0
+        if pred(k) {
+          result.set(k, filter_keys(entries[j].1, pred))
+        }
+        j = j + 1
+      }
+      TomlValue::Table(result)
+    }
+    TomlValue::InlineTable(t) => {
+      let result : Map[String, TomlValue] = Map([])
+      let entries = t.to_array()
+      let mut k = 0
+      while k < entries.length() {
+        let key = entries[k].0
+        if pred(key) {
+          result.set(key, filter_keys(entries[k].1, pred))
+        }
+        k = k + 1
+      }
+      TomlValue::InlineTable(result)
+    }
+    _ => value
+  }
+}
+
+/// Remove empty tables and arrays recursively
+pub fn prune_empty(value : TomlValue) -> TomlValue {
+  match value {
+    TomlValue::Array(arr) => {
+      let result : Array[TomlValue] = []
+      let mut i = 0
+      while i < arr.length() {
+        let pruned = prune_empty(arr[i])
+        match pruned {
+          TomlValue::Array(a) => if a.length() > 0 { result.push(pruned) }
+          TomlValue::Table(t) | TomlValue::InlineTable(t) => if t.length() > 0 { result.push(pruned) }
+          _ => result.push(pruned)
+        }
+        i = i + 1
+      }
+      TomlValue::Array(result)
+    }
+    TomlValue::Table(t) => {
+      let result : Map[String, TomlValue] = Map([])
+      let entries = t.to_array()
+      let mut j = 0
+      while j < entries.length() {
+        let pruned = prune_empty(entries[j].1)
+        let keep = match pruned {
+          TomlValue::Array(a) => a.length() > 0
+          TomlValue::Table(t2) | TomlValue::InlineTable(t2) => t2.length() > 0
+          _ => true
+        }
+        if keep { result.set(entries[j].0, pruned) }
+        j = j + 1
+      }
+      TomlValue::Table(result)
+    }
+    TomlValue::InlineTable(t) => {
+      let result : Map[String, TomlValue] = Map([])
+      let entries = t.to_array()
+      let mut k = 0
+      while k < entries.length() {
+        let pruned = prune_empty(entries[k].1)
+        let keep = match pruned {
+          TomlValue::Array(a) => a.length() > 0
+          TomlValue::Table(t2) | TomlValue::InlineTable(t2) => t2.length() > 0
+          _ => true
+        }
+        if keep { result.set(entries[k].0, pruned) }
+        k = k + 1
+      }
+      TomlValue::InlineTable(result)
+    }
+    _ => value
+  }
+}
+
+/// Recursively transform tree nodes based on a visitor function
+pub fn transform_tree(value : TomlValue, visitor : (TomlValue) -> TomlValue?) -> TomlValue {
+  match visitor(value) {
+    Some(transformed) => transformed
+    None => {
+      match value {
+        TomlValue::Array(arr) => {
+          let result : Array[TomlValue] = []
+          let mut i = 0
+          while i < arr.length() { result.push(transform_tree(arr[i], visitor)); i = i + 1 }
+          TomlValue::Array(result)
+        }
+        TomlValue::Table(t) => {
+          let result : Map[String, TomlValue] = Map([])
+          let entries = t.to_array()
+          let mut j = 0
+          while j < entries.length() {
+            result.set(entries[j].0, transform_tree(entries[j].1, visitor))
+            j = j + 1
+          }
+          TomlValue::Table(result)
+        }
+        TomlValue::InlineTable(t) => {
+          let result : Map[String, TomlValue] = Map([])
+          let entries = t.to_array()
+          let mut k = 0
+          while k < entries.length() {
+            result.set(entries[k].0, transform_tree(entries[k].1, visitor))
+            k = k + 1
+          }
+          TomlValue::InlineTable(result)
+        }
+        _ => value
+      }
+    }
+  }
+}
+
+// ============================================================
+// SECTION 8J: Visualization and Extended Serialization
+// ============================================================
+/// Convert TOML to a DOT graph (Graphviz) string
+pub fn to_dot(value : TomlValue, root_name : String) -> String {
+  let result : Array[String] = []
+  result.push("digraph TOML {")
+  result.push("  rankdir=LR;")
+  result.push("  node [shape=record, style=filled, fillcolor=white];")
+  dot_recursive(value, root_name, result, 1)
+  result.push("}")
+  let mut r = ""
+  let mut i = 0
+  while i < result.length() {
+    r = r + result[i] + "\n"
+    i = i + 1
+  }
+  r
+}
+
+fn dot_recursive(value : TomlValue, name : String, result : Array[String], depth : Int) -> Unit {
+  let indent = String::make(depth * 2, Int::unsafe_to_char(32))
+  let node_id = "n" + result.length().to_string()
+  let label = sanitize_dot_label(name)
+  match value {
+    TomlValue::Table(t) | TomlValue::InlineTable(t) => {
+      let entries = t.to_array()
+      result.push(indent + "  " + node_id + " [label=\"" + label + "\", shape=ellipse];")
+      let mut i = 0
+      while i < entries.length() {
+        let child_id = node_id + "_" + entries[i].0
+        dot_recursive(entries[i].1, entries[i].0, result, depth + 1)
+        result.push(indent + "  " + node_id + " -> n" + (result.length() - 1).to_string() + ";")
+        i = i + 1
+      }
+    }
+    TomlValue::Array(arr) => {
+      let arr_attr = ", shape=box];"
+      result.push(indent + "  " + node_id + " [label=\"" + label + " (Array)\"" + arr_attr)
+      let mut j = 0
+      while j < arr.length() {
+        dot_recursive(arr[j], j.to_string(), result, depth + 1)
+        result.push(indent + "  " + node_id + " -> n" + (result.length() - 1).to_string() + ";")
+        j = j + 1
+      }
+    }
+    _ => {
+      let val_str = match value {
+        TomlValue::Str(s) => s
+        TomlValue::Int(i) => i.to_string()
+        TomlValue::Float(f) => f.to_string()
+        TomlValue::Bool(b) => if b { "true" } else { "false" }
+        _ => "..."
+      }
+      result.push(indent + "  " + node_id + " [label=\"" + label + " = " + val_str + "\", shape=record];")
+    }
+  }
+}
+
+fn sanitize_dot_label(s : String) -> String {
+  let mut r = ""
+  let chars = s.to_array()
+  let mut i = 0
+  while i < chars.length() {
+    let c = chars[i]
+    if c == Int::unsafe_to_char(34) || c == Int::unsafe_to_char(92) {
+      r = r + "\\"
+    }
+    r = r + String::make(1, c)
+    i = i + 1
+  }
+  r
+}
+
+/// Convert to YAML-like format (approximate)
+pub fn to_yaml_like(value : TomlValue) -> String {
+  ser_yaml(value, 0)
+}
+
+fn ser_yaml(value : TomlValue, depth : Int) -> String {
+  let pad = String::make(depth * 2, Int::unsafe_to_char(32))
+  match value {
+    TomlValue::Str(s) => s
+    TomlValue::Int(i) => i.to_string()
+    TomlValue::Float(f) => f.to_string()
+    TomlValue::Bool(b) => if b { "true" } else { "false" }
+    TomlValue::OffsetDateTime(dt) => dt.datetime
+    TomlValue::LocalDateTime(dt) => dt.datetime
+    TomlValue::LocalDate(d) => d.date
+    TomlValue::LocalTime(t) => t.time
+    TomlValue::Array(arr) => {
+      let mut r = ""
+      let mut i = 0
+      while i < arr.length() {
+        r = r + pad + "- " + ser_yaml(arr[i], depth + 1)
+        if i < arr.length() - 1 { r = r + "\n" }
+        i = i + 1
+      }
+      r
+    }
+    TomlValue::Table(t) | TomlValue::InlineTable(t) => {
+      let entries = t.to_array()
+      let mut r = ""
+      let mut j = 0
+      while j < entries.length() {
+        let child = ser_yaml(entries[j].1, depth + 1)
+        if child.find("\n") != None {
+          r = r + pad + entries[j].0 + ":\n" + child
+        } else {
+          r = r + pad + entries[j].0 + ": " + child
+        }
+        if j < entries.length() - 1 { r = r + "\n" }
+        j = j + 1
+      }
+      r
+    }
+  }
+}
+
+/// Convert to INI format (supports 1 level of nesting)
+pub fn to_ini(value : TomlValue) -> String {
+  match value {
+    TomlValue::Table(t) | TomlValue::InlineTable(t) => {
+      let entries = t.to_array()
+      let mut r = ""
+      let mut i = 0
+      while i < entries.length() {
+        match entries[i].1 {
+          TomlValue::Table(sub) | TomlValue::InlineTable(sub) => {
+            r = r + "\n[" + entries[i].0 + "]\n"
+            let sub_entries = sub.to_array()
+            let mut k = 0
+            while k < sub_entries.length() {
+              r = r + entries[i].0 + "." + sub_entries[k].0 + " = " + ser_value_str(sub_entries[k].1) + "\n"
+              k = k + 1
+            }
+          }
+          _ => {
+            r = r + entries[i].0 + " = " + ser_value_str(entries[i].1) + "\n"
+          }
+        }
+        i = i + 1
+      }
+      r
+    }
+    _ => ""
+  }
+}
+
+fn ser_value_str(value : TomlValue) -> String {
+  let dq = String::make(1, Int::unsafe_to_char(34))
+  match value {
+    TomlValue::Str(s) => dq + ser_escape(s) + dq
+    TomlValue::Int(i) => i.to_string()
+    TomlValue::Float(f) => f.to_string()
+    TomlValue::Bool(b) => if b { "true" } else { "false" }
+    TomlValue::OffsetDateTime(dt) => dt.datetime
+    TomlValue::LocalDateTime(dt) => dt.datetime
+    TomlValue::LocalDate(d) => d.date
+    TomlValue::LocalTime(t) => t.time
+    _ => "..."
+  }
+}
+
+// ============================================================
 // SECTION 9: Query API
 // ============================================================
 

@@ -4257,6 +4257,348 @@ pub fn summary_diff(old_val : TomlValue, new_val : TomlValue) -> String {
 }
 
 // ============================================================
+// SECTION 8T: Event-Driven Parser Simulation (State Machine)
+// ============================================================
+/// Represents a parsing event in a stream
+pub enum ParseEvent {
+  StartDocument
+  EndDocument
+  StartTable(String)
+  EndTable(String)
+  KeyValue(String, TomlValue)
+  StartArray(String)
+  EndArray(String)
+  ArrayItem(TomlValue)
+  Comment(String)
+  Error(String)
+}
+
+/// Parse events from a TomlValue (simulates streaming)
+pub fn parse_events(value : TomlValue) -> Array[ParseEvent] {
+  let events : Array[ParseEvent] = []
+  events.push(ParseEvent::StartDocument)
+  event_recursive(value, "", events)
+  events.push(ParseEvent::EndDocument)
+  events
+}
+
+fn event_recursive(value : TomlValue, name : String, events : Array[ParseEvent]) -> Unit {
+  match value {
+    TomlValue::Table(t) => {
+      if name != "" { events.push(ParseEvent::StartTable(name)) }
+      let entries = t.to_array()
+      let mut i = 0
+      while i < entries.length() {
+        event_recursive(entries[i].1, entries[i].0, events)
+        i = i + 1
+      }
+      if name != "" { events.push(ParseEvent::EndTable(name)) }
+    }
+    TomlValue::InlineTable(t) => {
+      events.push(ParseEvent::StartTable(name))
+      let entries = t.to_array()
+      let mut i = 0
+      while i < entries.length() {
+        events.push(ParseEvent::KeyValue(entries[i].0, entries[i].1))
+        i = i + 1
+      }
+      events.push(ParseEvent::EndTable(name))
+    }
+    TomlValue::Array(arr) => {
+      events.push(ParseEvent::StartArray(name))
+      let mut j = 0
+      while j < arr.length() {
+        events.push(ParseEvent::ArrayItem(arr[j]))
+        j = j + 1
+      }
+      events.push(ParseEvent::EndArray(name))
+    }
+    _ => {
+      if name != "" {
+        events.push(ParseEvent::KeyValue(name, value))
+      }
+    }
+  }
+}
+
+/// Count events by type
+pub fn count_events(events : Array[ParseEvent]) -> Map[String, Int] {
+  let counts : Map[String, Int] = Map([])
+  let mut i = 0
+  while i < events.length() {
+    let type_name = match events[i] {
+      ParseEvent::StartDocument(_) | ParseEvent::EndDocument(_) => "Document"
+      ParseEvent::StartTable(_) | ParseEvent::EndTable(_) => "Table"
+      ParseEvent::KeyValue(_, _) => "KeyValue"
+      ParseEvent::StartArray(_) | ParseEvent::EndArray(_) => "Array"
+      ParseEvent::ArrayItem(_) => "ArrayItem"
+      ParseEvent::Comment(_) => "Comment"
+      ParseEvent::Error(_) => "Error"
+    }
+    match counts.get(type_name) {
+      Some(c) => counts.set(type_name, c + 1)
+      None => counts.set(type_name, 1)
+    }
+    i = i + 1
+  }
+  counts
+}
+
+// ============================================================
+// SECTION 8U: TOML to SQL Mapper
+// ============================================================
+/// Generate CREATE TABLE statements from a TomlValue
+pub fn to_sql_create(value : TomlValue, table_name : String) -> String? {
+  match value {
+    TomlValue::Table(t) | TomlValue::InlineTable(t) => {
+      let columns : Array[String] = []
+      let entries = t.to_array()
+      let mut i = 0
+      while i < entries.length() {
+        let col_type = match entries[i].1 {
+          TomlValue::Str(_) => "TEXT"
+          TomlValue::Int(_) => "INTEGER"
+          TomlValue::Float(_) => "REAL"
+          TomlValue::Bool(_) => "BOOLEAN"
+          _ => "TEXT"
+        }
+        columns.push(entries[i].0 + " " + col_type)
+        i = i + 1
+      }
+      let cols_str = join_sql_columns(columns)
+      Some("CREATE TABLE " + table_name + " (" + cols_str + ");")
+    }
+    _ => None
+  }
+}
+
+fn join_sql_columns(cols : Array[String]) -> String {
+  let mut r = ""
+  let mut i = 0
+  while i < cols.length() {
+    if i > 0 { r = r + ", " }
+    r = r + cols[i]
+    i = i + 1
+  }
+  r
+}
+
+/// Generate INSERT statements from an array of TomlValues
+pub fn to_sql_inserts(value : TomlValue, table_name : String) -> String? {
+  match value {
+    TomlValue::Array(arr) => {
+      if arr.length() == 0 { return None }
+      let headers = get_csv_headers(arr[0])
+      let mut r = ""
+      let mut i = 0
+      while i < arr.length() {
+        let values : Array[String] = []
+        let mut j = 0
+        while j < headers.length() {
+          match arr[i] {
+            TomlValue::Table(t) | TomlValue::InlineTable(t) => {
+              match t.get(headers[j]) {
+                Some(v) => values.push(sql_value(v))
+                None => values.push("NULL")
+              }
+            }
+            _ => values.push("NULL")
+          }
+          j = j + 1
+        }
+        r = r + "INSERT INTO " + table_name + " (" + join_sql_columns(headers) + ") VALUES (" + join_sql_columns(values) + ");\n"
+        i = i + 1
+      }
+      Some(r)
+    }
+    _ => None
+  }
+}
+
+fn sql_value(value : TomlValue) -> String {
+  match value {
+    TomlValue::Str(s) => "'" + s + "'"
+    TomlValue::Int(i) => i.to_string()
+    TomlValue::Float(f) => f.to_string()
+    TomlValue::Bool(b) => if b { "1" } else { "0" }
+    _ => "NULL"
+  }
+}
+
+// ============================================================
+// SECTION 8V: Configuration Profile Manager
+// ============================================================
+/// Represents a configuration profile
+pub struct Profile {
+  name : String
+  data : TomlValue
+  parent : String?
+}
+
+/// Merge a list of profiles in order (later overrides earlier)
+pub fn merge_profiles(profiles : Array[Profile]) -> TomlValue {
+  let mut result : TomlValue = TomlValue::Table(Map([]))
+  let mut i = 0
+  while i < profiles.length() {
+    result = merge(result, profiles[i].data)
+    i = i + 1
+  }
+  result
+}
+
+/// Validate that all profiles have the same schema
+pub fn validate_profile_consistency(profiles : Array[Profile]) -> ValidationResult {
+  if profiles.length() == 0 { return validation_ok() }
+  let base_schema = infer_schema(profiles[0].data)
+  let errors : Array[String] = []
+  let mut i = 1
+  while i < profiles.length() {
+    let schema = infer_schema(profiles[i].data)
+    let (added, removed) = diff_schemas(base_schema, schema)
+    let mut j = 0
+    while j < added.length() {
+      errors.push("Profile " + profiles[i].name + " adds field: " + added[j])
+      j = j + 1
+    }
+    let mut k = 0
+    while k < removed.length() {
+      errors.push("Profile " + profiles[i].name + " removes field: " + removed[k])
+      k = k + 1
+    }
+    i = i + 1
+  }
+  if errors.length() > 0 { validation_fail(errors) } else { validation_ok() }
+}
+
+/// Get a value from a profile with fallback to parent
+pub fn profile_get_with_fallback(profile : Profile, path : TomlPath, defaults : TomlValue) -> TomlValue? {
+  match resolve_path(profile.data, path) {
+    Some(v) => Some(v)
+    None => {
+      match resolve_path(defaults, path) {
+        Some(v) => Some(v)
+        None => None
+      }
+    }
+  }
+}
+
+// ============================================================
+// SECTION 8W: YAML Block Style Serialization
+// ============================================================
+/// Convert to YAML block style with explicit types
+pub fn to_yaml_block(value : TomlValue) -> String {
+  yaml_block_recursive(value, 0)
+}
+
+fn yaml_block_recursive(value : TomlValue, depth : Int) -> String {
+  let pad = String::make(depth * 2, Int::unsafe_to_char(32))
+  match value {
+    TomlValue::Str(s) => s
+    TomlValue::Int(i) => "!!int " + i.to_string()
+    TomlValue::Float(f) => "!!float " + f.to_string()
+    TomlValue::Bool(b) => "!!bool " + (if b { "true" } else { "false" })
+    TomlValue::OffsetDateTime(dt) => "!!datetime " + dt.datetime
+    TomlValue::LocalDateTime(dt) => "!!datetime " + dt.datetime
+    TomlValue::LocalDate(d) => "!!date " + d.date
+    TomlValue::LocalTime(t) => "!!time " + t.time
+    TomlValue::Array(arr) => {
+      if arr.length() == 0 { return "!!seq []" }
+      let mut r = pad + "!!seq\n"
+      let mut i = 0
+      while i < arr.length() {
+        let child = yaml_block_recursive(arr[i], depth + 1)
+        r = r + pad + "- " + child
+        if i < arr.length() - 1 { r = r + "\n" }
+        i = i + 1
+      }
+      r
+    }
+    TomlValue::Table(t) | TomlValue::InlineTable(t) => {
+      if t.length() == 0 { return "!!map {}" }
+      let entries = t.to_array()
+      let mut r = pad + "!!map\n"
+      let mut j = 0
+      while j < entries.length() {
+        let child = yaml_block_recursive(entries[j].1, depth + 1)
+        r = r + pad + entries[j].0 + ":\n" + child
+        if j < entries.length() - 1 { r = r + "\n" }
+        j = j + 1
+      }
+      r
+    }
+  }
+}
+
+// ============================================================
+// SECTION 8X: Comprehensive Error Reporting
+// ============================================================
+/// Represents an error report
+pub struct ErrorReport {
+  summary : String
+  details : Array[String]
+  suggestions : Array[String]
+}
+
+/// Generate an error report from a validation result
+pub fn generate_error_report(result : ValidationResult) -> ErrorReport {
+  let details : Array[String] = []
+  let suggestions : Array[String] = []
+  match result.valid {
+    true => {
+      return { summary: "Validation passed", details: [], suggestions: [] }
+    }
+    false => {
+      let errors = result.errors
+      let mut i = 0
+      while i < errors.length() {
+        details.push(errors[i])
+        let suggestion = generate_suggestion(errors[i])
+        if suggestion != "" { suggestions.push(suggestion) }
+        i = i + 1
+      }
+    }
+  }
+  let summary = "Validation failed with " + details.length().to_string() + " errors"
+  { summary: summary, details: details, suggestions: suggestions }
+}
+
+fn generate_suggestion(error : String) -> String {
+  if error.contains("Missing required field") {
+    "Add the missing field to your configuration"
+  } else if error.contains("Type mismatch") {
+    "Check the data type of the specified field"
+  } else if error.contains("Invalid date") {
+    "Ensure dates are in YYYY-MM-DD format"
+  } else if error.contains("Invalid time") {
+    "Ensure times are in HH:MM:SS format"
+  } else {
+    ""
+  }
+}
+
+/// Format an error report as a string
+pub fn format_error_report(report : ErrorReport) -> String {
+  let mut r = "=== Error Report ===\n"
+  r = r + "Summary: " + report.summary + "\n\n"
+  r = r + "Details:\n"
+  let mut i = 0
+  while i < report.details.length() {
+    r = r + "  - " + report.details[i] + "\n"
+    i = i + 1
+  }
+  if report.suggestions.length() > 0 {
+    r = r + "\nSuggestions:\n"
+    let mut j = 0
+    while j < report.suggestions.length() {
+      r = r + "  * " + report.suggestions[j] + "\n"
+      j = j + 1
+    }
+  }
+  r + "===================="
+}
+
+// ============================================================
 // SECTION 9: Query API
 // ============================================================
 

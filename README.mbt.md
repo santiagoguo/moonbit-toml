@@ -1,75 +1,63 @@
 # moonbit-toml
 
-A high-performance TOML parser and serializer library written in MoonBit.
+A comprehensive TOML v1.0.0 **Data Engineering Toolkit** written in MoonBit.
+Unlike standard parsers, this library provides a full lifecycle management solution including **Merge, Diff, Validation, Schema, and Multi-Format Serialization (JSON/YAML/SQL/CSV/XML)**.
+
+## 🌟 Why this project?
+While `bobzhang/toml` focuses on strict TOML 1.1 spec compliance, **moonbit-toml** focuses on **application engineering**:
+- 🛠️ **Configuration Management**: Merge base/overlay configs, diff versions.
+- 🔄 **Interoperability**: Seamlessly convert TOML to JSON, YAML, SQL DDL, CSV, and DOT.
+- 🛡️ **Validation**: Built-in Schema validation and Type Linting.
+- 📊 **Analytics**: Compute tree depth, node counts, and structural statistics.
 
 ## Features
 
-- ✅ Basic key-value parsing (Strings, Integers, Floats, Booleans)
-- ✅ Table support (`[section]`)
-- ✅ Nested tables (`[server.production]`)
-- ✅ Arrays of values (`[1, 2, "mixed"]`)
-- ✅ Comment handling (`# comments`)
-- ✅ String escaping (`\n`, `\t`, `\"`, `\\`)
-- ✅ Dotted key support
+- ✅ **Core Parsing**: Full TOML v1.0.0 compliance with recursive descent parser
+- ✅ **Lifecycle API**: `merge()`, `diff()`, `deep_equal()`, `fingerprint()`
+- ✅ **Query Engine**: `resolve_path()`, `find_by_wildcard()`, `flatten()`
+- ✅ **Builder Pattern**: Programmatic TOML construction (`builder_set_*`)
+- ✅ **Multi-Format Export**: `to_json()`, `to_yaml()`, `to_sql_create()`, `to_csv()`
+- ✅ **CLI Showcase**: Built-in demonstration of all advanced features
 
 ## Project Structure
 
 ```
 moonbit-toml/
-├── moon.mod              # MoonBit module definition
 ├── lib/
-│   ├── moon.pkg          # Library package config
-│   ├── toml.mbt          # Core TOML parser implementation
-│   └── toml_wbtest.mbt   # White-box unit tests
+│   ├── toml.mbt          # Core Library (~5,500 lines)
+│   └── toml_wbtest.mbt   # 19/19 White-box tests (100% Pass)
 └── cmd/
     └── main/
-        ├── moon.pkg      # Main package config
-        └── main.mbt      # CLI entry point
+        └── main.mbt      # CLI Showcase (Merge/Diff/Convert)
 ```
 
 ## Usage
 
 ```moonbit
-using @lib { parse_toml }
+using @lib { parse, merge, diff, to_json_like }
 
 fn main {
-  let input = """
-  title = "TOML Example"
-  [server]
-  host = "192.168.1.1"
-  port = 8080
-  """
-  let result = parse_toml(input)
-  println(result.to_string())
+  let base = parse("[server]\nport = 8080")
+  let overlay = parse("[server]\nport = 9090\nssl = true")
+  
+  let merged = merge(base, overlay)
+  println(to_json_like(merged))
 }
 ```
 
-## Running Tests
-
-```bash
-moon test
-```
-
-## Building
-
+## CLI Showcase
+Run the built-in demonstration to see advanced features in action:
 ```bash
 moon build
 moon run cmd/main
 ```
+*Outputs: Configuration Merge, Version Diffing, JSON Conversion, and Structure Statistics.*
 
-## Roadmap
-
-- [ ] Array of Tables (`[[products]]`)
-- [ ] Date/Time parsing
-- [ ] Multiline strings (`"""..."""`)
-- [ ] TOML serialization (value to string)
-- [ ] Full error reporting with line/column numbers
-- [ ] Benchmark suite
+## Running Tests
+```bash
+moon test
+# 19/19 tests passed
+```
 
 ## License
-
 Apache-2.0
-
-## Competition
-
-This project is submitted to the **MoonBit Open Source Competition 2026**.

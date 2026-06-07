@@ -545,6 +545,8 @@ pub enum TokenType {
   TTComment(String)
   TTNewline
   TTEOF
+  TTBacktickString(String)
+  TTMLBacktickString(String)
   TTError(String)
 }
 
@@ -562,6 +564,8 @@ fn is_value_token(tt : TokenType) -> Bool {
     TokenType::TTBoolean(_) => true
     TokenType::TTBracketOpen => true
     TokenType::TTBraceOpen => true
+    TokenType::TTBacktickString(_) => true
+    TokenType::TTMLBacktickString(_) => true
     _ => false
   }
 }
@@ -586,6 +590,8 @@ fn tt_to_string(tt : TokenType) -> String {
     TokenType::TTComment(s) => "Comment(" + s + ")"
     TokenType::TTNewline => "Newline"
     TokenType::TTEOF => "EOF"
+    TokenType::TTBacktickString(s) => "BacktickString(" + s + ")"
+    TokenType::TTMLBacktickString(s) => "MLBacktickString(" + s + ")"
     TokenType::TTError(s) => "Error(" + s + ")"
   }
 }
@@ -599,6 +605,8 @@ fn tt_extract_value(tt : TokenType) -> String {
     TokenType::TTInteger(s) => s
     TokenType::TTFloat(s) => s
     TokenType::TTBareKey(s) => s
+    TokenType::TTBacktickString(s) => s
+    TokenType::TTMLBacktickString(s) => s
     TokenType::TTComment(s) => s
     _ => ""
   }
@@ -655,6 +663,186 @@ fn lexer_add_error(lx : Lexer, kind : TomlErrorKind) -> Lexer {
 
 fn lexer_is_eof(lx : Lexer) -> Bool { lx.pos >= lx.source.length() }
 
+
+// Scan multiline basic string \"\"...\"\"
+fn lx_scan_ml_basic_string(lx : Lexer) -> Lexer {
+  let mut s = lexer_advance_n(lx, 3)  // consume opening \"\"\"
+  let mut result = ""
+  let mut newline_count = 0
+  while !lexer_is_eof(s) {
+    match lexer_current_char(s) {
+      Some(34) => {  // \"
+        // Check if this is closing \"\"\"
+        match lexer_peek(s, 1) {
+          Some(34) => {
+            match lexer_peek(s, 2) {
+              Some(34) => {
+                s = lexer_advance_n(s, 3)
+                return lexer_add_token(s, TokenType::TTMLBasicString(result))
+              }
+              _ => { result = result + "\""; s = lexer_advance(s) }
+            }
+          }
+          _ => { result = result + "\""; s = lexer_advance(s) }
+        }
+      }
+      Some(92) => {  // \\
+        s = lexer_advance(s)
+        match lexer_current_char(s) {
+          Some(34) => { result = result + "\""; s = lexer_advance(s) }
+          Some(92) => { result = result + "\\\\"; s = lexer_advance(s) }
+          Some(98) => { result = result + "\\b"; s = lexer_advance(s) }
+          Some(102) => { result = result + "\\f"; s = lexer_advance(s) }
+          Some(110) => { result = result + "\\n"; s = lexer_advance(s) }
+          Some(114) => { result = result + "\\r"; s = lexer_advance(s) }
+          Some(116) => { result = result + "\\t"; s = lexer_advance(s) }
+          Some(117) => {
+            s = lexer_advance(s)
+            let mut hex = ""
+            let mut hi = 0
+            while hi < 4 && !lexer_is_eof(s) {
+              match lexer_current_char(s) {
+                Some(c) => {
+                  if is_hex_digit(c) {
+                    hex = hex + String::make(1, Int::unsafe_to_char(c))
+                    s = lexer_advance(s)
+                  } else { break }
+                }
+                None => break
+              }
+              hi = hi + 1
+            }
+            result = result + "\\u" + hex
+          }
+          Some(10) => {  // escaped newline - skip leading whitespace on next line
+            s = lexer_advance(s)
+            while !lexer_is_eof(s) {
+              match lexer_current_char(s) {
+                Some(c) => {
+                  if c == 32 || c == 9 { s = lexer_advance(s) }
+                  else { break }
+                }
+                None => break
+              }
+            }
+          }
+          Some(_) => {
+            s = lexer_add_error(s, TomlErrorKind::InvalidStringEscape(0))
+            s = lexer_advance(s)
+          }
+          None => {
+            s = lexer_add_error(s, TomlErrorKind::UnterminatedString)
+            return lexer_add_token(s, TokenType::TTMLBasicString(result))
+          }
+        }
+      }
+      Some(c) => {
+        result = result + String::make(1, Int::unsafe_to_char(c))
+        s = lexer_advance(s)
+      }
+      None => {
+        s = lexer_add_error(s, TomlErrorKind::UnterminatedMultilineString)
+        return lexer_add_token(s, TokenType::TTMLBasicString(result))
+      }
+    }
+  }
+  lexer_add_token(s, TokenType::TTMLBasicString(result))
+}
+
+// Scan multiline literal string '''...'''
+fn lx_scan_ml_literal_string(lx : Lexer) -> Lexer {
+  let mut s = lexer_advance_n(lx, 3)  // consume opening '''
+  let mut result = ""
+  while !lexer_is_eof(s) {
+    match lexer_current_char(s) {
+      Some(39) => {  // '
+        match lexer_peek(s, 1) {
+          Some(39) => {
+            match lexer_peek(s, 2) {
+              Some(39) => {
+                s = lexer_advance_n(s, 3)
+                return lexer_add_token(s, TokenType::TTMLLiteralString(result))
+              }
+              _ => { result = result + "'"; s = lexer_advance(s) }
+            }
+          }
+          _ => { result = result + "'"; s = lexer_advance(s) }
+        }
+      }
+      Some(c) => {
+        result = result + String::make(1, Int::unsafe_to_char(c))
+        s = lexer_advance(s)
+      }
+      None => {
+        s = lexer_add_error(s, TomlErrorKind::UnterminatedMultilineString)
+        return lexer_add_token(s, TokenType::TTMLLiteralString(result))
+      }
+    }
+  }
+  lexer_add_token(s, TokenType::TTMLLiteralString(result))
+}
+
+// Scan backtick string `...` (TOML v1.1)
+fn lx_scan_backtick_string(lx : Lexer) -> Lexer {
+  let mut s = lexer_advance(lx)  // consume opening `
+  let mut result = ""
+  while !lexer_is_eof(s) {
+    match lexer_current_char(s) {
+      Some(96) => {  // `
+        s = lexer_advance(s)
+        return lexer_add_token(s, TokenType::TTBacktickString(result))
+      }
+      Some(c) => {
+        if is_newline(c) {
+          s = lexer_add_error(s, TomlErrorKind::UnterminatedString)
+          return lexer_add_token(s, TokenType::TTBacktickString(result))
+        }
+        result = result + String::make(1, Int::unsafe_to_char(c))
+        s = lexer_advance(s)
+      }
+      None => {
+        s = lexer_add_error(s, TomlErrorKind::UnterminatedString)
+        return lexer_add_token(s, TokenType::TTBacktickString(result))
+      }
+    }
+  }
+  lexer_add_token(s, TokenType::TTBacktickString(result))
+}
+
+// Scan triple backtick multiline string ```...``` (TOML v1.1)
+fn lx_scan_ml_backtick_string(lx : Lexer) -> Lexer {
+  let mut s = lexer_advance_n(lx, 3)  // consume opening ```
+  let mut result = ""
+  while !lexer_is_eof(s) {
+    match lexer_current_char(s) {
+      Some(96) => {  // `
+        match lexer_peek(s, 1) {
+          Some(96) => {
+            match lexer_peek(s, 2) {
+              Some(96) => {
+                s = lexer_advance_n(s, 3)
+                return lexer_add_token(s, TokenType::TTMLBacktickString(result))
+              }
+              _ => { result = result + "`"; s = lexer_advance(s) }
+            }
+          }
+          _ => { result = result + "`"; s = lexer_advance(s) }
+        }
+      }
+      Some(c) => {
+        result = result + String::make(1, Int::unsafe_to_char(c))
+        s = lexer_advance(s)
+      }
+      None => {
+        s = lexer_add_error(s, TomlErrorKind::UnterminatedMultilineString)
+        return lexer_add_token(s, TokenType::TTMLBacktickString(result))
+      }
+    }
+  }
+  lexer_add_token(s, TokenType::TTMLBacktickString(result))
+}
+
+// ============================================================
 // ============================================================
 // SECTION 6: Lexer scanning
 // ============================================================
@@ -1088,8 +1276,42 @@ fn lx_next_token(lx : Lexer) -> Lexer {
     Some(44) => lexer_add_token(lexer_advance(s), TokenType::TTComma)
     Some(61) => lexer_add_token(lexer_advance(s), TokenType::TTEquals)
     Some(46) => lexer_add_token(lexer_advance(s), TokenType::TTDot)
-    Some(34) => lx_scan_basic_string(s)
-    Some(39) => lx_scan_literal_string(s)
+    Some(34) => {
+      // Check for triple-double-quote """
+      match lexer_peek(s, 1) {
+        Some(34) => {
+          match lexer_peek(s, 2) {
+            Some(34) => lx_scan_ml_basic_string(s)
+            _ => lx_scan_basic_string(s)
+          }
+        }
+        _ => lx_scan_basic_string(s)
+      }
+    }
+    Some(39) => {
+      // Check for triple-single-quote '''
+      match lexer_peek(s, 1) {
+        Some(39) => {
+          match lexer_peek(s, 2) {
+            Some(39) => lx_scan_ml_literal_string(s)
+            _ => lx_scan_literal_string(s)
+          }
+        }
+        _ => lx_scan_literal_string(s)
+      }
+    }
+    Some(96) => {
+      // Check for triple-backtick ```
+      match lexer_peek(s, 1) {
+        Some(96) => {
+          match lexer_peek(s, 2) {
+            Some(96) => lx_scan_ml_backtick_string(s)
+            _ => lx_scan_backtick_string(s)
+          }
+        }
+        _ => lx_scan_backtick_string(s)
+      }
+    }
     Some(c) => {
       if is_digit(c) || c == 43 || c == 45 { lx_scan_number(s) }
       else if is_alpha(c) {
@@ -1188,6 +1410,10 @@ fn tt_tag(tt : TokenType) -> String {
     TokenType::TTComma => "comma"
     TokenType::TTEquals => "equals"
     TokenType::TTDot => "dot"
+    TokenType::TTBacktickString(_) => "backtick_string"
+    TokenType::TTMLBacktickString(_) => "ml_backtick_string"
+    TokenType::TTBacktickString(_) => "backtick_string"
+    TokenType::TTMLBacktickString(_) => "ml_backtick_string"
     TokenType::TTComment(_) => "comment"
     TokenType::TTNewline => "newline"
     TokenType::TTEOF => "eof"
@@ -1252,6 +1478,10 @@ fn ps_key(st : ParserState) -> TomlResult[(String, ParserState)] {
         TokenType::TTBareKey(k) => TomlResult::Ok((k, ps_advance(st)))
         TokenType::TTBasicString(k) => TomlResult::Ok((k, ps_advance(st)))
         TokenType::TTLiteralString(k) => TomlResult::Ok((k, ps_advance(st)))
+        TokenType::TTMLBasicString(k) => TomlResult::Ok((k, ps_advance(st)))
+        TokenType::TTMLLiteralString(k) => TomlResult::Ok((k, ps_advance(st)))
+        TokenType::TTBacktickString(k) => TomlResult::Ok((k, ps_advance(st)))
+        TokenType::TTMLBacktickString(k) => TomlResult::Ok((k, ps_advance(st)))
         _ => {
           let err = mk_error(TomlErrorKind::InvalidKey(tt_str(tok.token_type)), mk_pos(tok.line, tok.column, 0, ""))
           TomlResult::Err(err)
@@ -1305,6 +1535,10 @@ fn ps_value(st : ParserState) -> TomlResult[(TomlValue, ParserState)] {
       match tok.token_type {
         TokenType::TTBasicString(s) => TomlResult::Ok((TomlValue::Str(s), ps_advance(st)))
         TokenType::TTLiteralString(s) => TomlResult::Ok((TomlValue::Str(s), ps_advance(st)))
+        TokenType::TTMLBasicString(s) => TomlResult::Ok((TomlValue::Str(s), ps_advance(st)))
+        TokenType::TTMLLiteralString(s) => TomlResult::Ok((TomlValue::Str(s), ps_advance(st)))
+        TokenType::TTBacktickString(s) => TomlResult::Ok((TomlValue::Str(s), ps_advance(st)))
+        TokenType::TTMLBacktickString(s) => TomlResult::Ok((TomlValue::Str(s), ps_advance(st)))
         TokenType::TTInteger(s) => {
           match safe_parse_int(s) {
             Some(i) => TomlResult::Ok((TomlValue::Int(i), ps_advance(st)))

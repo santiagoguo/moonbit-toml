@@ -5181,3 +5181,50 @@ pub fn roundtrip(source : String) -> String? {
   }
 }
 
+
+// ============================================================
+// SECTION 99: Template Engine (v1.3.0)
+// ============================================================
+
+/// Render a template string with variable substitution.
+/// Variables are denoted by {{ name }} syntax.
+pub fn render_template(template : String, vars : Map[String, String]) -> String {
+  let mut result = ""
+  let mut i = 0
+  let len = template.length()
+  while i < len {
+    if i + 1 < len {
+      let c1 = template[i]
+      let c2 = template[i + 1]
+      if c1.to_int() == 123 && c2.to_int() == 123 {
+        let mut j = i + 2
+        while j + 1 < len {
+          let jc1 = template[j]
+          let jc2 = template[j + 1]
+          if jc1.to_int() == 125 && jc2.to_int() == 125 {
+            let var_name = template.substring(start=i + 2, end=j).trim().to_string()
+            match vars.get(var_name) {
+              Some(v) => { result = result + v }
+              None => { result = result + "{{" + var_name + "}}" }
+            }
+            i = j + 2
+            break
+          }
+          j = j + 1
+        }
+        if j + 1 >= len {
+          result = result + String::make(1, Int::unsafe_to_char(c1.to_int()))
+          i = i + 1
+        }
+      } else {
+        result = result + String::make(1, Int::unsafe_to_char(c1.to_int()))
+        i = i + 1
+      }
+    } else {
+      let c = template[i]
+      result = result + String::make(1, Int::unsafe_to_char(c.to_int()))
+      i = i + 1
+    }
+  }
+  result
+}

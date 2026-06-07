@@ -1,0 +1,8 @@
+import {
+  "santiagoguo/moonbit_toml/lib",
+  "moonbitlang/core/env",
+}
+
+options(
+  "is-main": true,
+)

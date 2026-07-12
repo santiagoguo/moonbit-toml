@@ -17,6 +17,6 @@ jobs:
         run: |
           git config user.name "santiagoguo"
           git config user.email "santiagoguo@users.noreply.github.com"
-          git remote add gitlink https://hanlinwu:${{ secrets.GITLINK_TOKEN }}@www.gitlink.org.cn/hanlinwu/moonbit-toml.git
+          git remote add gitlink https://hanlinwu:${{ secrets.GITLINKTOKEN }}@www.gitlink.org.cn/hanlinwu/moonbit-toml.git
           git push gitlink main --force
           git push gitlink --tags --force

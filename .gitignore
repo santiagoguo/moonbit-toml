@@ -1,6 +1,10 @@
 .DS_Store
 _build/
 target/
-target
 .mooncakes/
 .moonagent/
+*.wat
+*.wasm
+*.o
+*.a
+*.mbti

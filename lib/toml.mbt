@@ -15,6 +15,7 @@
 // SECTION 1: TOML Value representation
 // ============================================================
 
+///|
 /// Core TOML value type supporting all v1.0.0 data types
 pub enum TomlValue {
   Str(String)
@@ -31,21 +32,68 @@ pub enum TomlValue {
 }
 
 // Date-time wrapper types
-pub struct OffsetDateTime { datetime : String }
-pub struct LocalDateTime { datetime : String }
-pub struct LocalDate { date : String }
-pub struct LocalTime { time : String }
 
-fn OffsetDateTime::to_toml_string(self : OffsetDateTime) -> String { self.datetime }
-fn LocalDateTime::to_toml_string(self : LocalDateTime) -> String { self.datetime }
-fn LocalDate::to_toml_string(self : LocalDate) -> String { self.date }
-fn LocalTime::to_toml_string(self : LocalTime) -> String { self.time }
+///|
+pub struct OffsetDateTime {
+  datetime : String
+}
 
-pub impl Show for OffsetDateTime with to_string(self : OffsetDateTime) -> String { self.to_toml_string() }
-pub impl Show for LocalDateTime with to_string(self : LocalDateTime) -> String { self.to_toml_string() }
-pub impl Show for LocalDate with to_string(self : LocalDate) -> String { self.date }
-pub impl Show for LocalTime with to_string(self : LocalTime) -> String { self.time }
+///|
+pub struct LocalDateTime {
+  datetime : String
+}
 
+///|
+pub struct LocalDate {
+  date : String
+}
+
+///|
+pub struct LocalTime {
+  time : String
+}
+
+///|
+fn OffsetDateTime::to_toml_string(self : OffsetDateTime) -> String {
+  self.datetime
+}
+
+///|
+fn LocalDateTime::to_toml_string(self : LocalDateTime) -> String {
+  self.datetime
+}
+
+///|
+fn LocalDate::_to_toml_string(self : LocalDate) -> String {
+  self.date
+}
+
+///|
+fn LocalTime::_to_toml_string(self : LocalTime) -> String {
+  self.time
+}
+
+///|
+pub impl Show for OffsetDateTime with fn to_string(self : OffsetDateTime) -> String {
+  self.to_toml_string()
+}
+
+///|
+pub impl Show for LocalDateTime with fn to_string(self : LocalDateTime) -> String {
+  self.to_toml_string()
+}
+
+///|
+pub impl Show for LocalDate with fn to_string(self : LocalDate) -> String {
+  self.date
+}
+
+///|
+pub impl Show for LocalTime with fn to_string(self : LocalTime) -> String {
+  self.time
+}
+
+///|
 fn TomlValue::type_name(self : TomlValue) -> String {
   match self {
     TomlValue::Str(_) => "string"
@@ -62,9 +110,15 @@ fn TomlValue::type_name(self : TomlValue) -> String {
   }
 }
 
-fn quote_str(s : String) -> String { String::make(1, Int::unsafe_to_char(34)) + s + String::make(1, Int::unsafe_to_char(34)) }
+///|
+fn quote_str(s : String) -> String {
+  String::make(1, Int::unsafe_to_char(34)) +
+  s +
+  String::make(1, Int::unsafe_to_char(34))
+}
 
-pub impl Show for TomlValue with to_string(self : TomlValue) -> String {
+///|
+pub impl Show for TomlValue with fn to_string(self : TomlValue) -> String {
   match self {
     TomlValue::Str(s) => quote_str(s)
     TomlValue::Int(i) => i.to_string()
@@ -79,7 +133,9 @@ pub impl Show for TomlValue with to_string(self : TomlValue) -> String {
       let mut r = "["
       let mut i = 0
       while i < arr.length() {
-        if i > 0 { r = r + ", " }
+        if i > 0 {
+          r = r + ", "
+        }
         r = r + Show::to_string(arr[i])
         i = i + 1
       }
@@ -90,7 +146,9 @@ pub impl Show for TomlValue with to_string(self : TomlValue) -> String {
       let mut r = "{"
       let mut j = 0
       while j < entries.length() {
-        if j > 0 { r = r + ", " }
+        if j > 0 {
+          r = r + ", "
+        }
         let vs : String = Show::to_string(entries[j].1)
         r = r + entries[j].0 + " = " + vs
         j = j + 1
@@ -102,7 +160,9 @@ pub impl Show for TomlValue with to_string(self : TomlValue) -> String {
       let mut r = "{ "
       let mut k = 0
       while k < entries.length() {
-        if k > 0 { r = r + ", " }
+        if k > 0 {
+          r = r + ", "
+        }
         let vs2 : String = Show::to_string(entries[k].1)
         r = r + entries[k].0 + " = " + vs2
         k = k + 1
@@ -116,9 +176,22 @@ pub impl Show for TomlValue with to_string(self : TomlValue) -> String {
 // SECTION 2: Error system
 // ============================================================
 
+///|
 /// Error severity level
-pub enum Severity { Error; Warning; Info }
+pub enum Severity {
+  SError
+  SWarning
+  SInfo
+}
 
+// Suppress unused constructor warnings for planned API extensions
+
+///|
+fn _planned_severity() -> Array[Severity] {
+  [Severity::SError, Severity::SWarning, Severity::SInfo]
+}
+
+///|
 /// Specific TOML error kind
 pub enum TomlErrorKind {
   UnexpectedChar(Int)
@@ -127,100 +200,122 @@ pub enum TomlErrorKind {
   InvalidStringEscape(Int)
   InvalidUnicodeEscape(String)
   ControlCharInString(Int)
-  BareKeyCharNotAllowed(Int)
   InvalidInteger(String)
   InvalidFloat(String)
   InvalidValue(String)
   InvalidKey(String)
-  InvalidTableHeader(String)
-  DuplicateKey(String)
-  Redefinition(String)
-  InvalidDateTime(String)
-  InvalidDateRange(Int, Int, Int)
-  InvalidTimeRange(Int, Int, Int)
   UnterminatedString
-  UnterminatedInlineTable
-  UnterminatedArray
   UnterminatedMultilineString
-  KeyAfterArrayTable(String)
-  KeyAfterImplicitTable(String)
-  EmptyKey
-  WhitespaceBeforeEquals
-  LeadingZeroInInteger(String)
-  UnderscorePosition(String)
-  InvalidEscapeSequence(String)
-  UnknownError(String)
 }
 
+///|
 fn TomlErrorKind::description(self : TomlErrorKind) -> String {
   match self {
     TomlErrorKind::UnexpectedChar(c) => "Unexpected character: " + c.to_string()
     TomlErrorKind::UnexpectedEndOfInput => "Unexpected end of input"
-    TomlErrorKind::UnexpectedToken(got, expected) => "Expected " + expected + ", got " + got
-    TomlErrorKind::InvalidStringEscape(c) => "Invalid escape at char " + c.to_string()
+    TomlErrorKind::UnexpectedToken(got, expected) =>
+      "Expected " + expected + ", got " + got
+    TomlErrorKind::InvalidStringEscape(c) =>
+      "Invalid escape at char " + c.to_string()
     TomlErrorKind::InvalidUnicodeEscape(s) => "Invalid unicode escape: " + s
-    TomlErrorKind::ControlCharInString(c) => "Control char in string: " + c.to_string()
-    TomlErrorKind::BareKeyCharNotAllowed(c) => "Char not allowed in bare key: " + c.to_string()
+    TomlErrorKind::ControlCharInString(c) =>
+      "Control char in string: " + c.to_string()
     TomlErrorKind::InvalidInteger(s) => "Invalid integer: " + s
     TomlErrorKind::InvalidFloat(s) => "Invalid float: " + s
     TomlErrorKind::InvalidValue(s) => "Invalid value: " + s
     TomlErrorKind::InvalidKey(s) => "Invalid key: " + s
-    TomlErrorKind::InvalidTableHeader(s) => "Invalid table header: " + s
-    TomlErrorKind::DuplicateKey(s) => "Duplicate key: " + s
-    TomlErrorKind::Redefinition(s) => "Redefinition of: " + s
-    TomlErrorKind::InvalidDateTime(s) => "Invalid date-time: " + s
-    TomlErrorKind::InvalidDateRange(y, m, d) => "Invalid date: " + y.to_string() + "-" + m.to_string() + "-" + d.to_string()
-    TomlErrorKind::InvalidTimeRange(h, mi, s) => "Invalid time: " + h.to_string() + ":" + mi.to_string() + ":" + s.to_string()
     TomlErrorKind::UnterminatedString => "Unterminated string"
-    TomlErrorKind::UnterminatedInlineTable => "Unterminated inline table"
-    TomlErrorKind::UnterminatedArray => "Unterminated array"
-    TomlErrorKind::UnterminatedMultilineString => "Unterminated multiline string"
-    TomlErrorKind::KeyAfterArrayTable(s) => "Key after array of tables: " + s
-    TomlErrorKind::KeyAfterImplicitTable(s) => "Key after implicit table: " + s
-    TomlErrorKind::EmptyKey => "Empty key is not allowed"
-    TomlErrorKind::WhitespaceBeforeEquals => "Whitespace before = delimiter"
-    TomlErrorKind::LeadingZeroInInteger(s) => "Leading zeros: " + s
-    TomlErrorKind::UnderscorePosition(s) => "Invalid underscore: " + s
-    TomlErrorKind::InvalidEscapeSequence(s) => "Invalid escape: " + s
-    TomlErrorKind::UnknownError(s) => s
+    TomlErrorKind::UnterminatedMultilineString =>
+      "Unterminated multiline string"
   }
 }
 
+///|
 /// Source position for error reporting
-pub struct SourcePos { line : Int; column : Int; offset : Int; source : String }
-fn mk_pos(line : Int, column : Int, offset : Int, source : String) -> SourcePos {
-  { line: line, column: column, offset: offset, source: source }
+pub struct SourcePos {
+  line : Int
+  column : Int
+  offset : Int
+  source : String
 }
 
+///|
+fn mk_pos(line : Int, column : Int, offset : Int, source : String) -> SourcePos {
+  { line, column, offset, source }
+}
+
+///|
 /// Complete TOML error
-pub struct TomlError { kind : TomlErrorKind; pos : SourcePos; message : String }
+pub struct TomlError {
+  kind : TomlErrorKind
+  pos : SourcePos
+  message : String
+}
+
+///|
 fn mk_error(kind : TomlErrorKind, pos : SourcePos) -> TomlError {
   let msg = kind.description()
-  { kind: kind, pos: pos, message: msg }
+  { kind, pos, message: msg }
 }
-fn mk_error_at(kind : TomlErrorKind, line : Int, column : Int, source : String) -> TomlError {
+
+///|
+fn _mk_error_at(
+  kind : TomlErrorKind,
+  line : Int,
+  column : Int,
+  source : String,
+) -> TomlError {
   let pos = mk_pos(line, column, 0, source)
   mk_error(kind, pos)
 }
 
-pub impl Show for TomlError with to_string(self : TomlError) -> String {
-  "Error at line " + self.pos.line.to_string() + ", col " + self.pos.column.to_string() + ": " + self.message
+///|
+pub impl Show for TomlError with fn to_string(self : TomlError) -> String {
+  "Error at line " +
+  self.pos.line.to_string() +
+  ", col " +
+  self.pos.column.to_string() +
+  ": " +
+  self.message
 }
 
+///|
 /// Result type for TOML operations
-pub enum TomlResult[T] { Ok(T); Err(TomlError) }
+pub enum TomlResult[T] {
+  Ok(T)
+  Err(TomlError)
+}
 
-fn TomlResult::is_ok[T](self : TomlResult[T]) -> Bool {
-  match self { TomlResult::Ok(_) => true; TomlResult::Err(_) => false }
+///|
+fn[T] TomlResult::_is_ok(self : TomlResult[T]) -> Bool {
+  match self {
+    TomlResult::Ok(_) => true
+    TomlResult::Err(_) => false
+  }
 }
-fn TomlResult::is_err[T](self : TomlResult[T]) -> Bool {
-  match self { TomlResult::Ok(_) => false; TomlResult::Err(_) => true }
+
+///|
+fn[T] TomlResult::_is_err(self : TomlResult[T]) -> Bool {
+  match self {
+    TomlResult::Ok(_) => false
+    TomlResult::Err(_) => true
+  }
 }
-fn TomlResult::unwrap_or[T](self : TomlResult[T], default : T) -> T {
-  match self { TomlResult::Ok(v) => v; TomlResult::Err(_) => default }
+
+///|
+fn[T] TomlResult::_unwrap_or(self : TomlResult[T], default : T) -> T {
+  match self {
+    TomlResult::Ok(v) => v
+    TomlResult::Err(_) => default
+  }
 }
-fn TomlResult::to_option[T](self : TomlResult[T]) -> T? {
-  match self { TomlResult::Ok(v) => Some(v); TomlResult::Err(_) => None }
+
+///|
+fn[T] TomlResult::_to_option(self : TomlResult[T]) -> T? {
+  match self {
+    TomlResult::Ok(v) => Some(v)
+    TomlResult::Err(_) => None
+  }
 }
 
 // ============================================================
@@ -230,9 +325,12 @@ fn TomlResult::to_option[T](self : TomlResult[T]) -> T? {
 // Note: @string::parse_int and @string::parse_double raise exceptions.
 // MoonBit has no try/catch, so we implement manual parsers here.
 
+///|
 /// Safe decimal integer parsing
 fn safe_parse_int(s : String) -> Int? {
-  if s.length() == 0 { return None }
+  if s.length() == 0 {
+    return None
+  }
   let mut i = 0
   let mut negative = false
   let mut result : Int = 0
@@ -242,78 +340,123 @@ fn safe_parse_int(s : String) -> Int? {
   } else if s[0].to_int() == 43 {
     i = 1
   }
-  if i >= s.length() { return None }
+  if i >= s.length() {
+    return None
+  }
   while i < s.length() {
     let c = s[i].to_int()
     if c >= 48 && c <= 57 {
       result = result * 10 + (c - 48)
     } else if c == 95 {
-      if i == 0 || i == s.length() - 1 { return None }
+      if i == 0 || i == s.length() - 1 {
+        return None
+      }
       let prev = s[i - 1].to_int()
-      if prev == 95 { return None }
+      if prev == 95 {
+        return None
+      }
     } else {
       return None
     }
     i = i + 1
   }
-  if negative { result = -result }
+  if negative {
+    result = -result
+  }
   Some(result)
 }
 
+///|
 /// Safe hex integer parsing
 fn safe_parse_hex(s : String) -> Int? {
-  if s.length() < 3 { return None }
-  if s[0].to_int() != 48 || s[1].to_int() != 120 { return None }
+  if s.length() < 3 {
+    return None
+  }
+  if s[0].to_int() != 48 || s[1].to_int() != 120 {
+    return None
+  }
   let mut i = 2
   let mut result : Int = 0
   while i < s.length() {
     let c = s[i].to_int()
-    let digit : Int? = if c >= 48 && c <= 57 { Some(c - 48) }
-      else if c >= 97 && c <= 102 { Some(c - 87) }
-      else if c >= 65 && c <= 70 { Some(c - 55) }
-      else if c == 95 { None }
-      else { return None }
-    match digit { Some(d) => result = result * 16 + d; _ => { let _ = 0 } }
+    let digit : Int? = if c >= 48 && c <= 57 {
+      Some(c - 48)
+    } else if c >= 97 && c <= 102 {
+      Some(c - 87)
+    } else if c >= 65 && c <= 70 {
+      Some(c - 55)
+    } else if c == 95 {
+      None
+    } else {
+      return None
+    }
+    match digit {
+      Some(d) => result = result * 16 + d
+      _ => {
+        let _ = 0
+      }
+    }
     i = i + 1
   }
   Some(result)
 }
 
+///|
 /// Safe octal integer parsing
 fn safe_parse_octal(s : String) -> Int? {
-  if s.length() < 3 { return None }
-  if s[0].to_int() != 48 || s[1].to_int() != 111 { return None }
+  if s.length() < 3 {
+    return None
+  }
+  if s[0].to_int() != 48 || s[1].to_int() != 111 {
+    return None
+  }
   let mut i = 2
   let mut result : Int = 0
   while i < s.length() {
     let c = s[i].to_int()
-    if c >= 48 && c <= 55 { result = result * 8 + (c - 48) }
-    else if c == 95 {}
-    else { return None }
+    if c >= 48 && c <= 55 {
+      result = result * 8 + (c - 48)
+    } else if c == 95 {
+
+    } else {
+      return None
+    }
     i = i + 1
   }
   Some(result)
 }
 
+///|
 /// Safe binary integer parsing
 fn safe_parse_binary(s : String) -> Int? {
-  if s.length() < 3 { return None }
-  if s[0].to_int() != 48 || s[1].to_int() != 98 { return None }
+  if s.length() < 3 {
+    return None
+  }
+  if s[0].to_int() != 48 || s[1].to_int() != 98 {
+    return None
+  }
   let mut i = 2
   let mut result : Int = 0
   while i < s.length() {
     let c = s[i].to_int()
-    if c >= 48 && c <= 49 { result = result * 2 + (c - 48) }
-    else if c == 95 {}
-    else { return None }
+    if c >= 48 && c <= 49 {
+      result = result * 2 + (c - 48)
+    } else if c == 95 {
+
+    } else {
+      return None
+    }
     i = i + 1
   }
   Some(result)
 }
 
+///|
 /// Extract N digits from string at position
 fn extract_digits(s : String, start : Int, count : Int) -> Int? {
-  if start + count > s.length() { return None }
+  if start + count > s.length() {
+    return None
+  }
   let mut result : Int = 0
   let mut i = 0
   while i < count {
@@ -328,39 +471,66 @@ fn extract_digits(s : String, start : Int, count : Int) -> Int? {
   Some(result)
 }
 
+///|
 /// Format number with leading zeros (2 digits)
 fn fmt2(v : Int) -> String {
-  if v < 10 { "0" + v.to_string() } else { v.to_string() }
-}
-/// Format number with leading zeros (3 digits)
-fn fmt3(v : Int) -> String {
-  if v < 10 { "00" + v.to_string() }
-  else if v < 100 { "0" + v.to_string() }
-  else { v.to_string() }
-}
-/// Format number with leading zeros (4 digits)
-fn fmt4(v : Int) -> String {
-  if v < 10 { "000" + v.to_string() }
-  else if v < 100 { "00" + v.to_string() }
-  else if v < 1000 { "0" + v.to_string() }
-  else { v.to_string() }
+  if v < 10 {
+    "0" + v.to_string()
+  } else {
+    v.to_string()
+  }
 }
 
+///|
+/// Format number with leading zeros (3 digits)
+fn _fmt3(v : Int) -> String {
+  if v < 10 {
+    "00" + v.to_string()
+  } else if v < 100 {
+    "0" + v.to_string()
+  } else {
+    v.to_string()
+  }
+}
+
+///|
+/// Format number with leading zeros (4 digits)
+fn fmt4(v : Int) -> String {
+  if v < 10 {
+    "000" + v.to_string()
+  } else if v < 100 {
+    "00" + v.to_string()
+  } else if v < 1000 {
+    "0" + v.to_string()
+  } else {
+    v.to_string()
+  }
+}
+
+///|
 /// Parse date portion: YYYY-MM-DD
 fn parse_date_part(s : String, start : Int) -> (String, Int)? {
-  if start + 10 > s.length() { return None }
+  if start + 10 > s.length() {
+    return None
+  }
   match extract_digits(s, start, 4) {
     None => return None
     Some(yv) => {
-      if s[start + 4].to_int() != 45 { return None }
+      if s[start + 4].to_int() != 45 {
+        return None
+      }
       match extract_digits(s, start + 5, 2) {
         None => return None
         Some(mv) => {
-          if s[start + 7].to_int() != 45 { return None }
+          if s[start + 7].to_int() != 45 {
+            return None
+          }
           match extract_digits(s, start + 8, 2) {
             None => return None
             Some(dv) => {
-              if mv < 1 || mv > 12 || dv < 1 || dv > 31 { return None }
+              if mv < 1 || mv > 12 || dv < 1 || dv > 31 {
+                return None
+              }
               Some((fmt4(yv) + "-" + fmt2(mv) + "-" + fmt2(dv), start + 10))
             }
           }
@@ -370,21 +540,30 @@ fn parse_date_part(s : String, start : Int) -> (String, Int)? {
   }
 }
 
+///|
 /// Parse time portion: HH:MM:SS[.fractional]
 fn parse_time_part(s : String, start : Int) -> (String, Int)? {
-  if start + 8 > s.length() { return None }
+  if start + 8 > s.length() {
+    return None
+  }
   match extract_digits(s, start, 2) {
     None => return None
     Some(hv) => {
-      if s[start + 2].to_int() != 58 { return None }
+      if s[start + 2].to_int() != 58 {
+        return None
+      }
       match extract_digits(s, start + 3, 2) {
         None => return None
         Some(miv) => {
-          if s[start + 5].to_int() != 58 { return None }
+          if s[start + 5].to_int() != 58 {
+            return None
+          }
           match extract_digits(s, start + 6, 2) {
             None => return None
             Some(sev) => {
-              if hv > 23 || miv > 59 || sev > 59 { return None }
+              if hv > 23 || miv > 59 || sev > 59 {
+                return None
+              }
               let mut formatted = fmt2(hv) + ":" + fmt2(miv) + ":" + fmt2(sev)
               let mut end_pos = start + 8
               // Fractional seconds
@@ -396,7 +575,9 @@ fn parse_time_part(s : String, start : Int) -> (String, Int)? {
                   if c >= 48 && c <= 57 {
                     frac = frac + String::make(1, Int::unsafe_to_char(c))
                     end_pos = end_pos + 1
-                  } else { break }
+                  } else {
+                    break
+                  }
                 }
                 formatted = formatted + "." + frac
               }
@@ -409,9 +590,12 @@ fn parse_time_part(s : String, start : Int) -> (String, Int)? {
   }
 }
 
+///|
 /// Parse timezone offset: Z or +/-HH:MM
 fn parse_offset_part(s : String, start : Int) -> (String, Int)? {
-  if start >= s.length() { return None }
+  if start >= s.length() {
+    return None
+  }
   let c = s[start].to_int()
   if c == 90 || c == 122 {
     Some(("Z", start + 1))
@@ -420,11 +604,15 @@ fn parse_offset_part(s : String, start : Int) -> (String, Int)? {
     match extract_digits(s, start + 1, 2) {
       None => return None
       Some(ohv) => {
-        if s[start + 3].to_int() != 58 { return None }
+        if s[start + 3].to_int() != 58 {
+          return None
+        }
         match extract_digits(s, start + 4, 2) {
           None => return None
           Some(omv) => {
-            if omv > 59 { return None }
+            if omv > 59 {
+              return None
+            }
             Some((sign + fmt2(ohv) + ":" + fmt2(omv), start + 6))
           }
         }
@@ -439,22 +627,27 @@ fn parse_offset_part(s : String, start : Int) -> (String, Int)? {
 // SECTION 4: Date-time parsing
 // ============================================================
 
+///|
 fn try_parse_offset_datetime(s : String) -> OffsetDateTime? {
   match parse_date_part(s, 0) {
     None => return None
     Some((ds, p1)) => {
-      if p1 >= s.length() { return None }
+      if p1 >= s.length() {
+        return None
+      }
       let tc = s[p1].to_int()
-      if tc != 84 && tc != 116 && tc != 32 { return None }
+      if tc != 84 && tc != 116 && tc != 32 {
+        return None
+      }
       match parse_time_part(s, p1 + 1) {
         None => return None
         Some((ts, p2)) => {
-          if p2 >= s.length() { return None }
+          if p2 >= s.length() {
+            return None
+          }
           match parse_offset_part(s, p2) {
             None => return None
-            Some((os, _)) => {
-              Some({ datetime: ds + "T" + ts + os })
-            }
+            Some((os, _)) => Some({ datetime: ds + "T" + ts + os })
           }
         }
       }
@@ -462,17 +655,24 @@ fn try_parse_offset_datetime(s : String) -> OffsetDateTime? {
   }
 }
 
+///|
 fn try_parse_local_datetime(s : String) -> LocalDateTime? {
   match parse_date_part(s, 0) {
     None => return None
     Some((ds, p1)) => {
-      if p1 >= s.length() { return None }
+      if p1 >= s.length() {
+        return None
+      }
       let tc = s[p1].to_int()
-      if tc != 84 && tc != 116 && tc != 32 { return None }
+      if tc != 84 && tc != 116 && tc != 32 {
+        return None
+      }
       match parse_time_part(s, p1 + 1) {
         None => return None
         Some((ts, p2)) => {
-          if p2 != s.length() { return None }
+          if p2 != s.length() {
+            return None
+          }
           Some({ datetime: ds + "T" + ts })
         }
       }
@@ -480,43 +680,58 @@ fn try_parse_local_datetime(s : String) -> LocalDateTime? {
   }
 }
 
+///|
 fn try_parse_local_date(s : String) -> LocalDate? {
   match parse_date_part(s, 0) {
     None => return None
     Some((ds, p1)) => {
-      if p1 != s.length() { return None }
+      if p1 != s.length() {
+        return None
+      }
       Some({ date: ds })
     }
   }
 }
 
+///|
 fn try_parse_local_time(s : String) -> LocalTime? {
   match parse_time_part(s, 0) {
     None => return None
     Some((ts, p1)) => {
-      if p1 != s.length() { return None }
+      if p1 != s.length() {
+        return None
+      }
       Some({ time: ts })
     }
   }
 }
 
+///|
 /// Try parsing a string as any date-time type
 fn try_parse_any_datetime(s : String) -> TomlValue? {
   match try_parse_offset_datetime(s) {
     Some(dt) => return Some(TomlValue::OffsetDateTime(dt))
-    None => { let _ = 0 }
+    None => {
+      let _ = 0
+    }
   }
   match try_parse_local_datetime(s) {
     Some(dt) => return Some(TomlValue::LocalDateTime(dt))
-    None => { let _ = 0 }
+    None => {
+      let _ = 0
+    }
   }
   match try_parse_local_date(s) {
     Some(d) => return Some(TomlValue::LocalDate(d))
-    None => { let _ = 0 }
+    None => {
+      let _ = 0
+    }
   }
   match try_parse_local_time(s) {
     Some(t) => return Some(TomlValue::LocalTime(t))
-    None => { let _ = 0 }
+    None => {
+      let _ = 0
+    }
   }
   None
 }
@@ -525,6 +740,7 @@ fn try_parse_any_datetime(s : String) -> TomlValue? {
 // SECTION 5: Lexer
 // ============================================================
 
+///|
 /// Token type enumeration
 pub enum TokenType {
   TTBasicString(String)
@@ -547,13 +763,25 @@ pub enum TokenType {
   TTEOF
   TTBacktickString(String)
   TTMLBacktickString(String)
-  TTError(String)
+  TTUnusedError(String)
 }
 
-pub struct Token { token_type : TokenType; line : Int; column : Int }
+///|
+fn _planned_token_type() -> Array[TokenType] {
+  [TokenType::TTUnusedError("")]
+}
+
+///|
+pub struct Token {
+  token_type : TokenType
+  line : Int
+  column : Int
+}
 
 // Token type helpers
-fn is_value_token(tt : TokenType) -> Bool {
+
+///|
+fn _is_value_token(tt : TokenType) -> Bool {
   match tt {
     TokenType::TTBasicString(_) => true
     TokenType::TTMLBasicString(_) => true
@@ -570,6 +798,7 @@ fn is_value_token(tt : TokenType) -> Bool {
   }
 }
 
+///|
 fn tt_to_string(tt : TokenType) -> String {
   match tt {
     TokenType::TTBasicString(s) => "BasicString(" + s + ")"
@@ -592,11 +821,12 @@ fn tt_to_string(tt : TokenType) -> String {
     TokenType::TTEOF => "EOF"
     TokenType::TTBacktickString(s) => "BacktickString(" + s + ")"
     TokenType::TTMLBacktickString(s) => "MLBacktickString(" + s + ")"
-    TokenType::TTError(s) => "Error(" + s + ")"
+    TokenType::TTUnusedError(s) => "Error(" + s + ")"
   }
 }
 
-fn tt_extract_value(tt : TokenType) -> String {
+///|
+fn _tt_extract_value(tt : TokenType) -> String {
   match tt {
     TokenType::TTBasicString(s) => s
     TokenType::TTMLBasicString(s) => s
@@ -613,6 +843,8 @@ fn tt_extract_value(tt : TokenType) -> String {
 }
 
 // Lexer state - passed explicitly
+
+///|
 pub struct Lexer {
   source : String
   pos : Int
@@ -622,106 +854,181 @@ pub struct Lexer {
   errors : Array[TomlError]
 }
 
+///|
 fn lexer_init(source : String) -> Lexer {
-  { source: source, pos: 0, line: 1, column: 1, tokens: [], errors: [] }
+  { source, pos: 0, line: 1, column: 1, tokens: [], errors: [] }
 }
 
+///|
 fn lexer_current_char(lx : Lexer) -> Int? {
-  if lx.pos >= lx.source.length() { None } else { Some(lx.source[lx.pos].to_int()) }
+  if lx.pos >= lx.source.length() {
+    None
+  } else {
+    Some(lx.source[lx.pos].to_int())
+  }
 }
 
+///|
 fn lexer_peek(lx : Lexer, offset : Int) -> Int? {
   let p = lx.pos + offset
-  if p >= lx.source.length() { None } else { Some(lx.source[p].to_int()) }
+  if p >= lx.source.length() {
+    None
+  } else {
+    Some(lx.source[p].to_int())
+  }
 }
 
+///|
 fn lexer_advance(lx : Lexer) -> Lexer {
   let c = lx.source[lx.pos].to_int()
   let new_col = if c == 10 { 1 } else { lx.column + 1 }
   let new_line = if c == 10 { lx.line + 1 } else { lx.line }
-  { source: lx.source, pos: lx.pos + 1, line: new_line, column: new_col, tokens: lx.tokens, errors: lx.errors }
+  {
+    source: lx.source,
+    pos: lx.pos + 1,
+    line: new_line,
+    column: new_col,
+    tokens: lx.tokens,
+    errors: lx.errors,
+  }
 }
 
+///|
 fn lexer_advance_n(lx : Lexer, n : Int) -> Lexer {
   let mut s = lx
   let mut i = 0
-  while i < n { s = lexer_advance(s); i = i + 1 }
+  while i < n {
+    s = lexer_advance(s)
+    i = i + 1
+  }
   s
 }
 
+///|
 fn lexer_add_token(lx : Lexer, tt : TokenType) -> Lexer {
   let tok = { token_type: tt, line: lx.line, column: lx.column }
-  { source: lx.source, pos: lx.pos, line: lx.line, column: lx.column, tokens: { let mut _t = lx.tokens; _t.push(tok); _t }, errors: lx.errors }
+  {
+    source: lx.source,
+    pos: lx.pos,
+    line: lx.line,
+    column: lx.column,
+    tokens: {
+      let mut _t = lx.tokens
+      _t.push(tok)
+      _t
+    },
+    errors: lx.errors,
+  }
 }
 
+///|
 fn lexer_add_error(lx : Lexer, kind : TomlErrorKind) -> Lexer {
   let err = mk_error(kind, mk_pos(lx.line, lx.column, lx.pos, lx.source))
   let new_errs = lx.errors
   new_errs.push(err)
-  { source: lx.source, pos: lx.pos, line: lx.line, column: lx.column, tokens: lx.tokens, errors: new_errs }
+  {
+    source: lx.source,
+    pos: lx.pos,
+    line: lx.line,
+    column: lx.column,
+    tokens: lx.tokens,
+    errors: new_errs,
+  }
 }
 
-fn lexer_is_eof(lx : Lexer) -> Bool { lx.pos >= lx.source.length() }
-
+///|
+fn lexer_is_eof(lx : Lexer) -> Bool {
+  lx.pos >= lx.source.length()
+}
 
 // Scan multiline basic string \"\"...\"\"
+
+///|
 fn lx_scan_ml_basic_string(lx : Lexer) -> Lexer {
-  let mut s = lexer_advance_n(lx, 3)  // consume opening \"\"\"
+  let mut s = lexer_advance_n(lx, 3) // consume opening \"\"\"
   let mut result = ""
-  let mut newline_count = 0
+  let mut _newline_count = 0
   while !lexer_is_eof(s) {
     match lexer_current_char(s) {
-      Some(34) => {  // \"
+      Some(34) => // \"
         // Check if this is closing \"\"\"
         match lexer_peek(s, 1) {
-          Some(34) => {
+          Some(34) =>
             match lexer_peek(s, 2) {
               Some(34) => {
                 s = lexer_advance_n(s, 3)
                 return lexer_add_token(s, TokenType::TTMLBasicString(result))
               }
-              _ => { result = result + "\""; s = lexer_advance(s) }
+              _ => {
+                result = result + "\""
+                s = lexer_advance(s)
+              }
             }
+          _ => {
+            result = result + "\""
+            s = lexer_advance(s)
           }
-          _ => { result = result + "\""; s = lexer_advance(s) }
         }
-      }
-      Some(92) => {  // \\
+      Some(92) => { // \\
         s = lexer_advance(s)
         match lexer_current_char(s) {
-          Some(34) => { result = result + "\""; s = lexer_advance(s) }
-          Some(92) => { result = result + "\\\\"; s = lexer_advance(s) }
-          Some(98) => { result = result + "\\b"; s = lexer_advance(s) }
-          Some(102) => { result = result + "\\f"; s = lexer_advance(s) }
-          Some(110) => { result = result + "\\n"; s = lexer_advance(s) }
-          Some(114) => { result = result + "\\r"; s = lexer_advance(s) }
-          Some(116) => { result = result + "\\t"; s = lexer_advance(s) }
+          Some(34) => {
+            result = result + "\""
+            s = lexer_advance(s)
+          }
+          Some(92) => {
+            result = result + "\\\\"
+            s = lexer_advance(s)
+          }
+          Some(98) => {
+            result = result + "\\b"
+            s = lexer_advance(s)
+          }
+          Some(102) => {
+            result = result + "\\f"
+            s = lexer_advance(s)
+          }
+          Some(110) => {
+            result = result + "\\n"
+            s = lexer_advance(s)
+          }
+          Some(114) => {
+            result = result + "\\r"
+            s = lexer_advance(s)
+          }
+          Some(116) => {
+            result = result + "\\t"
+            s = lexer_advance(s)
+          }
           Some(117) => {
             s = lexer_advance(s)
             let mut hex = ""
             let mut hi = 0
             while hi < 4 && !lexer_is_eof(s) {
               match lexer_current_char(s) {
-                Some(c) => {
+                Some(c) =>
                   if is_hex_digit(c) {
                     hex = hex + String::make(1, Int::unsafe_to_char(c))
                     s = lexer_advance(s)
-                  } else { break }
-                }
+                  } else {
+                    break
+                  }
                 None => break
               }
               hi = hi + 1
             }
             result = result + "\\u" + hex
           }
-          Some(10) => {  // escaped newline - skip leading whitespace on next line
+          Some(10) => { // escaped newline - skip leading whitespace on next line
             s = lexer_advance(s)
             while !lexer_is_eof(s) {
               match lexer_current_char(s) {
-                Some(c) => {
-                  if c == 32 || c == 9 { s = lexer_advance(s) }
-                  else { break }
-                }
+                Some(c) =>
+                  if c == 32 || c == 9 {
+                    s = lexer_advance(s)
+                  } else {
+                    break
+                  }
                 None => break
               }
             }
@@ -750,25 +1057,31 @@ fn lx_scan_ml_basic_string(lx : Lexer) -> Lexer {
 }
 
 // Scan multiline literal string '''...'''
+
+///|
 fn lx_scan_ml_literal_string(lx : Lexer) -> Lexer {
-  let mut s = lexer_advance_n(lx, 3)  // consume opening '''
+  let mut s = lexer_advance_n(lx, 3) // consume opening '''
   let mut result = ""
   while !lexer_is_eof(s) {
     match lexer_current_char(s) {
-      Some(39) => {  // '
+      Some(39) => // '
         match lexer_peek(s, 1) {
-          Some(39) => {
+          Some(39) =>
             match lexer_peek(s, 2) {
               Some(39) => {
                 s = lexer_advance_n(s, 3)
                 return lexer_add_token(s, TokenType::TTMLLiteralString(result))
               }
-              _ => { result = result + "'"; s = lexer_advance(s) }
+              _ => {
+                result = result + "'"
+                s = lexer_advance(s)
+              }
             }
+          _ => {
+            result = result + "'"
+            s = lexer_advance(s)
           }
-          _ => { result = result + "'"; s = lexer_advance(s) }
         }
-      }
       Some(c) => {
         result = result + String::make(1, Int::unsafe_to_char(c))
         s = lexer_advance(s)
@@ -783,12 +1096,14 @@ fn lx_scan_ml_literal_string(lx : Lexer) -> Lexer {
 }
 
 // Scan backtick string `...` (TOML v1.1)
+
+///|
 fn lx_scan_backtick_string(lx : Lexer) -> Lexer {
-  let mut s = lexer_advance(lx)  // consume opening `
+  let mut s = lexer_advance(lx) // consume opening `
   let mut result = ""
   while !lexer_is_eof(s) {
     match lexer_current_char(s) {
-      Some(96) => {  // `
+      Some(96) => { // `
         s = lexer_advance(s)
         return lexer_add_token(s, TokenType::TTBacktickString(result))
       }
@@ -810,25 +1125,31 @@ fn lx_scan_backtick_string(lx : Lexer) -> Lexer {
 }
 
 // Scan triple backtick multiline string ```...``` (TOML v1.1)
+
+///|
 fn lx_scan_ml_backtick_string(lx : Lexer) -> Lexer {
-  let mut s = lexer_advance_n(lx, 3)  // consume opening ```
+  let mut s = lexer_advance_n(lx, 3) // consume opening ```
   let mut result = ""
   while !lexer_is_eof(s) {
     match lexer_current_char(s) {
-      Some(96) => {  // `
+      Some(96) => // `
         match lexer_peek(s, 1) {
-          Some(96) => {
+          Some(96) =>
             match lexer_peek(s, 2) {
               Some(96) => {
                 s = lexer_advance_n(s, 3)
                 return lexer_add_token(s, TokenType::TTMLBacktickString(result))
               }
-              _ => { result = result + "`"; s = lexer_advance(s) }
+              _ => {
+                result = result + "`"
+                s = lexer_advance(s)
+              }
             }
+          _ => {
+            result = result + "`"
+            s = lexer_advance(s)
           }
-          _ => { result = result + "`"; s = lexer_advance(s) }
         }
-      }
       Some(c) => {
         result = result + String::make(1, Int::unsafe_to_char(c))
         s = lexer_advance(s)
@@ -848,28 +1169,45 @@ fn lx_scan_ml_backtick_string(lx : Lexer) -> Lexer {
 // ============================================================
 
 // Whitespace check
-fn is_whitespace(c : Int) -> Bool { c == 32 || c == 9 }  // space or tab
-fn is_newline(c : Int) -> Bool { c == 10 || c == 13 }  // \n or \r
-fn is_digit(c : Int) -> Bool { c >= 48 && c <= 57 }
+
+///|
+fn is_whitespace(c : Int) -> Bool {
+  c == 32 || c == 9
+} // space or tab
+
+///|
+fn is_newline(c : Int) -> Bool {
+  c == 10 || c == 13
+} // \n or \r
+
+///|
+fn is_digit(c : Int) -> Bool {
+  c >= 48 && c <= 57
+}
+
+///|
 fn is_hex_digit(c : Int) -> Bool {
   (c >= 48 && c <= 57) || (c >= 97 && c <= 102) || (c >= 65 && c <= 70)
 }
+
+///|
 fn is_alpha(c : Int) -> Bool {
   (c >= 97 && c <= 122) || (c >= 65 && c <= 90)
 }
+
+///|
 fn is_bare_key_char(c : Int) -> Bool {
-  is_alpha(c) || is_digit(c) || c == 45 || c == 95  // alnum, -, _
+  is_alpha(c) || is_digit(c) || c == 45 || c == 95 // alnum, -, _
 }
 
 // Skip whitespace
+
+///|
 fn lx_skip_ws(lx : Lexer) -> Lexer {
   let mut s = lx
   while !lexer_is_eof(s) {
     match lexer_current_char(s) {
-      Some(c) => {
-        if is_whitespace(c) { s = lexer_advance(s) }
-        else { break }
-      }
+      Some(c) => if is_whitespace(c) { s = lexer_advance(s) } else { break }
       None => break
     }
   }
@@ -877,14 +1215,13 @@ fn lx_skip_ws(lx : Lexer) -> Lexer {
 }
 
 // Skip whitespace but not newlines
-fn lx_skip_ws_no_nl(lx : Lexer) -> Lexer {
+
+///|
+fn _lx_skip_ws_no_nl(lx : Lexer) -> Lexer {
   let mut s = lx
   while !lexer_is_eof(s) {
     match lexer_current_char(s) {
-      Some(c) => {
-        if c == 32 || c == 9 { s = lexer_advance(s) }
-        else { break }
-      }
+      Some(c) => if c == 32 || c == 9 { s = lexer_advance(s) } else { break }
       None => break
     }
   }
@@ -892,14 +1229,18 @@ fn lx_skip_ws_no_nl(lx : Lexer) -> Lexer {
 }
 
 // Skip comment
+
+///|
 fn lx_skip_comment(lx : Lexer) -> Lexer {
   let mut s = lx
   let mut text = ""
-  s = lexer_advance(s)  // consume #
+  s = lexer_advance(s) // consume #
   while !lexer_is_eof(s) {
     match lexer_current_char(s) {
       Some(c) => {
-        if is_newline(c) { break }
+        if is_newline(c) {
+          break
+        }
         text = text + String::make(1, Int::unsafe_to_char(c))
         s = lexer_advance(s)
       }
@@ -911,74 +1252,110 @@ fn lx_skip_comment(lx : Lexer) -> Lexer {
 }
 
 // Skip newline
+
+///|
 fn lx_skip_newline(lx : Lexer) -> Lexer {
   let mut s = lx
   match lexer_current_char(s) {
-    Some(13) => {  // \r
+    Some(13) => { // \r
       s = lexer_advance(s)
       match lexer_current_char(s) {
-        Some(10) => s = lexer_advance(s)  // \r\n
-        _ => { let _ = 0 }
+        Some(10) => s = lexer_advance(s) // \r\n
+        _ => {
+          let _ = 0
+        }
       }
     }
-    Some(10) => { s = lexer_advance(s) }  // \n
-    _ => { let _ = 0 }
+    Some(10) => s = lexer_advance(s) // \n
+    _ => {
+      let _ = 0
+    }
   }
   s = lexer_add_token(s, TokenType::TTNewline)
   s
 }
 
 // Scan bare key
-fn lx_scan_bare_key(lx : Lexer) -> Lexer {
+
+///|
+fn _lx_scan_bare_key(lx : Lexer) -> Lexer {
   let mut s = lx
   let mut key = ""
   while !lexer_is_eof(s) {
     match lexer_current_char(s) {
-      Some(c) => {
+      Some(c) =>
         if is_bare_key_char(c) {
           key = key + String::make(1, Int::unsafe_to_char(c))
           s = lexer_advance(s)
-        } else { break }
-      }
+        } else {
+          break
+        }
       None => break
     }
   }
-  if key.length() == 0 { s }
-  else { lexer_add_token(s, TokenType::TTBareKey(key)) }
+  if key.length() == 0 {
+    s
+  } else {
+    lexer_add_token(s, TokenType::TTBareKey(key))
+  }
 }
 
 // Scan basic string "..."
+
+///|
 fn lx_scan_basic_string(lx : Lexer) -> Lexer {
-  let mut s = lexer_advance(lx)  // consume opening "
+  let mut s = lexer_advance(lx) // consume opening "
   let mut result = ""
   while !lexer_is_eof(s) {
     match lexer_current_char(s) {
-      Some(34) => {  // "
+      Some(34) => { // "
         s = lexer_advance(s)
         return lexer_add_token(s, TokenType::TTBasicString(result))
       }
-      Some(92) => {  // \
+      Some(92) => { // \
         s = lexer_advance(s)
         match lexer_current_char(s) {
-          Some(34) => { result = result + "\""; s = lexer_advance(s) }
-          Some(92) => { result = result + "\\"; s = lexer_advance(s) }
-          Some(98) => { result = result + Int::unsafe_to_char(8).to_string(); s = lexer_advance(s) }
-          Some(102) => { result = result + Int::unsafe_to_char(12).to_string(); s = lexer_advance(s) }
-          Some(110) => { result = result + "\\n"; s = lexer_advance(s) }
-          Some(114) => { result = result + "\\r"; s = lexer_advance(s) }
-          Some(116) => { result = result + "\\t"; s = lexer_advance(s) }
-          Some(117) => {  // \uXXXX
+          Some(34) => {
+            result = result + "\""
+            s = lexer_advance(s)
+          }
+          Some(92) => {
+            result = result + "\\"
+            s = lexer_advance(s)
+          }
+          Some(98) => {
+            result = result + Int::unsafe_to_char(8).to_string()
+            s = lexer_advance(s)
+          }
+          Some(102) => {
+            result = result + Int::unsafe_to_char(12).to_string()
+            s = lexer_advance(s)
+          }
+          Some(110) => {
+            result = result + "\\n"
+            s = lexer_advance(s)
+          }
+          Some(114) => {
+            result = result + "\\r"
+            s = lexer_advance(s)
+          }
+          Some(116) => {
+            result = result + "\\t"
+            s = lexer_advance(s)
+          }
+          Some(117) => { // \uXXXX
             s = lexer_advance(s)
             let mut hex = ""
             let mut hi = 0
             while hi < 4 && !lexer_is_eof(s) {
               match lexer_current_char(s) {
-                Some(c) => {
+                Some(c) =>
                   if is_hex_digit(c) {
                     hex = hex + String::make(1, Int::unsafe_to_char(c))
                     s = lexer_advance(s)
-                  } else { break }
-                }
+                  } else {
+                    break
+                  }
                 None => break
               }
               hi = hi + 1
@@ -990,18 +1367,19 @@ fn lx_scan_basic_string(lx : Lexer) -> Lexer {
               result = result + "\\u" + hex
             }
           }
-          Some(85) => {  // \UXXXXXXXX
+          Some(85) => { // \UXXXXXXXX
             s = lexer_advance(s)
             let mut hex = ""
             let mut hi = 0
             while hi < 8 && !lexer_is_eof(s) {
               match lexer_current_char(s) {
-                Some(c) => {
+                Some(c) =>
                   if is_hex_digit(c) {
                     hex = hex + String::make(1, Int::unsafe_to_char(c))
                     s = lexer_advance(s)
-                  } else { break }
-                }
+                  } else {
+                    break
+                  }
                 None => break
               }
               hi = hi + 1
@@ -1018,7 +1396,7 @@ fn lx_scan_basic_string(lx : Lexer) -> Lexer {
           }
         }
       }
-      Some(c) => {
+      Some(c) =>
         if c < 32 && c != 9 {
           s = lexer_add_error(s, TomlErrorKind::ControlCharInString(c))
           s = lexer_advance(s)
@@ -1026,7 +1404,6 @@ fn lx_scan_basic_string(lx : Lexer) -> Lexer {
           result = result + String::make(1, Int::unsafe_to_char(c))
           s = lexer_advance(s)
         }
-      }
       None => {
         s = lexer_add_error(s, TomlErrorKind::UnterminatedString)
         return lexer_add_token(s, TokenType::TTBasicString(result))
@@ -1037,12 +1414,14 @@ fn lx_scan_basic_string(lx : Lexer) -> Lexer {
 }
 
 // Scan literal string '...'
+
+///|
 fn lx_scan_literal_string(lx : Lexer) -> Lexer {
-  let mut s = lexer_advance(lx)  // consume '
+  let mut s = lexer_advance(lx) // consume '
   let mut result = ""
   while !lexer_is_eof(s) {
     match lexer_current_char(s) {
-      Some(39) => {  // '
+      Some(39) => { // '
         s = lexer_advance(s)
         return lexer_add_token(s, TokenType::TTLiteralString(result))
       }
@@ -1063,24 +1442,28 @@ fn lx_scan_literal_string(lx : Lexer) -> Lexer {
   lexer_add_token(s, TokenType::TTLiteralString(result))
 }
 
-
 // Scan integer or float
+
+///|
 fn lx_scan_number(lx : Lexer) -> Lexer {
   let mut s = lx
   let mut num_str = ""
   let mut is_float = false
   // Check for sign
   match lexer_current_char(s) {
-    Some(43) | Some(45) => {
+    Some(43) | Some(45) =>
       match lexer_current_char(s) {
         Some(c) => {
           num_str = num_str + String::make(1, Int::unsafe_to_char(c))
           s = lexer_advance(s)
         }
-        None => { let _ = 0 }
+        None => {
+          let _ = 0
+        }
       }
+    _ => {
+      let _ = 0
     }
-    _ => { let _ = 0 }
   }
   // Check for special float values: inf, nan
   if num_str == "" {
@@ -1088,26 +1471,29 @@ fn lx_scan_number(lx : Lexer) -> Lexer {
       Some(105) | Some(110) | Some(97) => {
         while !lexer_is_eof(s) {
           match lexer_current_char(s) {
-            Some(cc) => {
+            Some(cc) =>
               if is_alpha(cc) {
                 num_str = num_str + String::make(1, Int::unsafe_to_char(cc))
                 s = lexer_advance(s)
-              } else { break }
-            }
+              } else {
+                break
+              }
             None => break
           }
         }
         return lexer_add_token(s, TokenType::TTFloat(num_str))
       }
-      _ => { let _ = 0 }
+      _ => {
+        let _ = 0
+      }
     }
   }
   // Check for hex/octal/binary prefix (only if starting with 0 and no sign)
   if num_str == "" {
     match lexer_current_char(s) {
-      Some(48) => {
+      Some(48) =>
         match lexer_peek(s, 1) {
-          Some(cx) => {
+          Some(cx) =>
             if cx == 120 || cx == 111 || cx == 98 {
               num_str = num_str + String::make(1, Int::unsafe_to_char(48))
               s = lexer_advance(s)
@@ -1115,28 +1501,32 @@ fn lx_scan_number(lx : Lexer) -> Lexer {
               s = lexer_advance(s)
               while !lexer_is_eof(s) {
                 match lexer_current_char(s) {
-                  Some(cc) => {
+                  Some(cc) =>
                     if is_hex_digit(cc) || cc == 95 {
-                      num_str = num_str + String::make(1, Int::unsafe_to_char(cc))
+                      num_str = num_str +
+                        String::make(1, Int::unsafe_to_char(cc))
                       s = lexer_advance(s)
-                    } else { break }
-                  }
+                    } else {
+                      break
+                    }
                   None => break
                 }
               }
               return lexer_add_token(s, TokenType::TTInteger(num_str))
             }
+          None => {
+            let _ = 0
           }
-          None => { let _ = 0 }
         }
+      _ => {
+        let _ = 0
       }
-      _ => { let _ = 0 }
     }
   }
   // Regular integer/float scanning
   while !lexer_is_eof(s) {
     match lexer_current_char(s) {
-      Some(cc) => {
+      Some(cc) =>
         if is_digit(cc) || cc == 95 {
           num_str = num_str + String::make(1, Int::unsafe_to_char(cc))
           s = lexer_advance(s)
@@ -1146,17 +1536,19 @@ fn lx_scan_number(lx : Lexer) -> Lexer {
           s = lexer_advance(s)
           while !lexer_is_eof(s) {
             match lexer_current_char(s) {
-              Some(c2) => {
+              Some(c2) =>
                 if is_digit(c2) || c2 == 95 {
                   num_str = num_str + String::make(1, Int::unsafe_to_char(c2))
                   s = lexer_advance(s)
-                } else { break }
-              }
+                } else {
+                  break
+                }
               None => break
             }
           }
-        } else { break }
-      }
+        } else {
+          break
+        }
       None => break
     }
   }
@@ -1171,21 +1563,26 @@ fn lx_scan_number(lx : Lexer) -> Lexer {
           num_str = num_str + String::make(1, Int::unsafe_to_char(0))
           s = lexer_advance(s)
         }
-        _ => { let _ = 0 }
+        _ => {
+          let _ = 0
+        }
       }
       while !lexer_is_eof(s) {
         match lexer_current_char(s) {
-          Some(c3) => {
+          Some(c3) =>
             if is_digit(c3) || c3 == 95 {
               num_str = num_str + String::make(1, Int::unsafe_to_char(c3))
               s = lexer_advance(s)
-            } else { break }
-          }
+            } else {
+              break
+            }
           None => break
         }
       }
     }
-    _ => { let _ = 0 }
+    _ => {
+      let _ = 0
+    }
   }
   if is_float {
     lexer_add_token(s, TokenType::TTFloat(num_str))
@@ -1195,36 +1592,63 @@ fn lx_scan_number(lx : Lexer) -> Lexer {
 }
 
 // Safe float parsing
+
+///|
 fn pow10(exp : Double) -> Double {
   let base = 10.0
   let mut result = 1.0
   let e = if exp < 0.0 { -exp } else { exp }
   let mut i : Int = 0
   let int_e = e.to_int()
-  while i < int_e { result = result * base; i = i + 1 }
-  if exp < 0.0 { 1.0 / result } else { result }
+  while i < int_e {
+    result = result * base
+    i = i + 1
+  }
+  if exp < 0.0 {
+    1.0 / result
+  } else {
+    result
+  }
 }
 
+///|
 fn safe_parse_float(s : String) -> Double? {
-  if s.length() == 0 { return None }
+  if s.length() == 0 {
+    return None
+  }
   // Handle special values
-  if s == "inf" || s == "+inf" { Some(1.0 / 0.0) }
-  else if s == "-inf" { Some(-1.0 / 0.0) }
-  else if s == "nan" || s == "+nan" || s == "-nan" { Some(0.0 / 0.0) }
-  else {
+  if s == "inf" || s == "+inf" {
+    Some(1.0 / 0.0)
+  } else if s == "-inf" {
+    Some(-1.0 / 0.0)
+  } else if s == "nan" || s == "+nan" || s == "-nan" {
+    Some(0.0 / 0.0)
+  } else {
     let mut i = 0
     let mut negative = false
-    if s[0].to_int() == 45 { negative = true; i = 1 }
-    else if s[0].to_int() == 43 { i = 1 }
-    if i >= s.length() { return None }
+    if s[0].to_int() == 45 {
+      negative = true
+      i = 1
+    } else if s[0].to_int() == 43 {
+      i = 1
+    }
+    if i >= s.length() {
+      return None
+    }
     let mut int_part : Double = 0.0
     while i < s.length() {
       let c = s[i].to_int()
-      if c >= 48 && c <= 57 { int_part = int_part * 10.0 + (c - 48).to_double() }
-      else if c == 95 {}
-      else if c == 46 { break }
-      else if c == 101 || c == 69 { break }
-      else { return None }
+      if c >= 48 && c <= 57 {
+        int_part = int_part * 10.0 + (c - 48).to_double()
+      } else if c == 95 {
+
+      } else if c == 46 {
+        break
+      } else if c == 101 || c == 69 {
+        break
+      } else {
+        return None
+      }
       i = i + 1
     }
     if i < s.length() && s[i].to_int() == 46 {
@@ -1236,36 +1660,59 @@ fn safe_parse_float(s : String) -> Double? {
         if c >= 48 && c <= 57 {
           divisor = divisor * 10.0
           frac_part = frac_part * 10.0 + (c - 48).to_double()
-        } else if c == 95 {}
-        else if c == 101 || c == 69 { break }
-        else { return None }
+        } else if c == 95 {
+
+        } else if c == 101 || c == 69 {
+          break
+        } else {
+          return None
+        }
         i = i + 1
       }
       int_part = int_part + frac_part / divisor
     }
     if i < s.length() && (s[i].to_int() == 101 || s[i].to_int() == 69) {
       i = i + 1
-      let exp_neg = if i < s.length() && s[i].to_int() == 45 { true } else { false }
-      if i < s.length() && (s[i].to_int() == 45 || s[i].to_int() == 43) { i = i + 1 }
+      let exp_neg = if i < s.length() && s[i].to_int() == 45 {
+        true
+      } else {
+        false
+      }
+      if i < s.length() && (s[i].to_int() == 45 || s[i].to_int() == 43) {
+        i = i + 1
+      }
       let mut exp_val : Int = 0
       while i < s.length() {
         let c = s[i].to_int()
-        if c >= 48 && c <= 57 { exp_val = exp_val * 10 + (c - 48) }
-        else { return None }
+        if c >= 48 && c <= 57 {
+          exp_val = exp_val * 10 + (c - 48)
+        } else {
+          return None
+        }
         i = i + 1
       }
-      let exp_d = if exp_neg { -(exp_val.to_double()) } else { exp_val.to_double() }
+      let exp_d = if exp_neg {
+        -exp_val.to_double()
+      } else {
+        exp_val.to_double()
+      }
       int_part = int_part * pow10(exp_d)
     }
-    if negative { int_part = -int_part }
+    if negative {
+      int_part = -int_part
+    }
     Some(int_part)
   }
 }
 
 // Main next token function
+
+///|
 fn lx_next_token(lx : Lexer) -> Lexer {
   let s = lx_skip_ws(lx)
-  if lexer_is_eof(s) { return lexer_add_token(s, TokenType::TTEOF) }
+  if lexer_is_eof(s) {
+    return lexer_add_token(s, TokenType::TTEOF)
+  }
   match lexer_current_char(s) {
     Some(35) => lx_skip_comment(s)
     Some(10) | Some(13) => lx_skip_newline(s)
@@ -1276,73 +1723,74 @@ fn lx_next_token(lx : Lexer) -> Lexer {
     Some(44) => lexer_add_token(lexer_advance(s), TokenType::TTComma)
     Some(61) => lexer_add_token(lexer_advance(s), TokenType::TTEquals)
     Some(46) => lexer_add_token(lexer_advance(s), TokenType::TTDot)
-    Some(34) => {
+    Some(34) =>
       // Check for triple-double-quote """
       match lexer_peek(s, 1) {
-        Some(34) => {
+        Some(34) =>
           match lexer_peek(s, 2) {
             Some(34) => lx_scan_ml_basic_string(s)
             _ => lx_scan_basic_string(s)
           }
-        }
         _ => lx_scan_basic_string(s)
       }
-    }
-    Some(39) => {
+    Some(39) =>
       // Check for triple-single-quote '''
       match lexer_peek(s, 1) {
-        Some(39) => {
+        Some(39) =>
           match lexer_peek(s, 2) {
             Some(39) => lx_scan_ml_literal_string(s)
             _ => lx_scan_literal_string(s)
           }
-        }
         _ => lx_scan_literal_string(s)
       }
-    }
-    Some(96) => {
+    Some(96) =>
       // Check for triple-backtick ```
       match lexer_peek(s, 1) {
-        Some(96) => {
+        Some(96) =>
           match lexer_peek(s, 2) {
             Some(96) => lx_scan_ml_backtick_string(s)
             _ => lx_scan_backtick_string(s)
           }
-        }
         _ => lx_scan_backtick_string(s)
       }
-    }
-    Some(c) => {
-      if is_digit(c) || c == 43 || c == 45 { lx_scan_number(s) }
-      else if is_alpha(c) {
+    Some(c) =>
+      if is_digit(c) || c == 43 || c == 45 {
+        lx_scan_number(s)
+      } else if is_alpha(c) {
         let mut s2 = s
         let mut word = ""
         while !lexer_is_eof(s2) {
           match lexer_current_char(s2) {
-            Some(cc) => {
+            Some(cc) =>
               if is_bare_key_char(cc) {
                 word = word + String::make(1, Int::unsafe_to_char(cc))
                 s2 = lexer_advance(s2)
-              } else { break }
-            }
+              } else {
+                break
+              }
             None => break
           }
         }
-        if word == "true" { lexer_add_token(s2, TokenType::TTBoolean(true)) }
-        else if word == "false" { lexer_add_token(s2, TokenType::TTBoolean(false)) }
-        else if word == "inf" || word == "nan" { lexer_add_token(s2, TokenType::TTFloat(word)) }
-        else { lexer_add_token(s2, TokenType::TTBareKey(word)) }
-      }
-      else {
+        if word == "true" {
+          lexer_add_token(s2, TokenType::TTBoolean(true))
+        } else if word == "false" {
+          lexer_add_token(s2, TokenType::TTBoolean(false))
+        } else if word == "inf" || word == "nan" {
+          lexer_add_token(s2, TokenType::TTFloat(word))
+        } else {
+          lexer_add_token(s2, TokenType::TTBareKey(word))
+        }
+      } else {
         let s3 = lexer_add_error(s, TomlErrorKind::UnexpectedChar(c))
         lexer_advance(s3)
       }
-    }
     None => lexer_add_token(s, TokenType::TTEOF)
   }
 }
 
 // Scan all tokens
+
+///|
 fn scan_all_tokens(source : String) -> Array[Token] {
   let mut lx = lexer_init(source)
   while true {
@@ -1350,49 +1798,73 @@ fn scan_all_tokens(source : String) -> Array[Token] {
     let len = next.tokens.length()
     if len > 0 {
       match next.tokens[len - 1].token_type {
-        TokenType::TTEOF => { return next.tokens }
-        _ => { lx = next }
+        TokenType::TTEOF => return next.tokens
+        _ => lx = next
       }
-    } else { lx = next }
+    } else {
+      lx = next
+    }
   }
   []
 }
-
 
 // ============================================================
 // SECTION 7: Parser
 // ============================================================
 
 // Parser state - passed explicitly
+
+///|
 pub struct ParserState {
   tokens : Array[Token]
   pos : Int
   errors : Array[TomlError]
 }
+
+///|
 fn parser_init(tokens : Array[Token]) -> ParserState {
-  { tokens: tokens, pos: 0, errors: [] }
+  { tokens, pos: 0, errors: [] }
 }
+
+///|
 fn ps_current(st : ParserState) -> Token? {
-  if st.pos >= st.tokens.length() { None } else { Some(st.tokens[st.pos]) }
+  if st.pos >= st.tokens.length() {
+    None
+  } else {
+    Some(st.tokens[st.pos])
+  }
 }
-fn ps_current_type(st : ParserState) -> TokenType {
-  match ps_current(st) { Some(t) => t.token_type; None => TokenType::TTEOF }
+
+///|
+fn _ps_current_type(st : ParserState) -> TokenType {
+  match ps_current(st) {
+    Some(t) => t.token_type
+    None => TokenType::TTEOF
+  }
 }
+
+///|
 fn ps_advance(st : ParserState) -> ParserState {
   { tokens: st.tokens, pos: st.pos + 1, errors: st.errors }
 }
-fn ps_add_error(st : ParserState, err : TomlError) -> ParserState {
+
+///|
+fn _ps_add_error(st : ParserState, err : TomlError) -> ParserState {
   let new_errs = st.errors
   new_errs.push(err)
   { tokens: st.tokens, pos: st.pos, errors: new_errs }
 }
 
 // Helper: check if two token types match
+
+///|
 fn tt_eq(a : TokenType, b : TokenType) -> Bool {
   let a_name = tt_tag(a)
   let b_name = tt_tag(b)
   a_name == b_name
 }
+
+///|
 fn tt_tag(tt : TokenType) -> String {
   match tt {
     TokenType::TTBasicString(_) => "basic_string"
@@ -1412,16 +1884,16 @@ fn tt_tag(tt : TokenType) -> String {
     TokenType::TTDot => "dot"
     TokenType::TTBacktickString(_) => "backtick_string"
     TokenType::TTMLBacktickString(_) => "ml_backtick_string"
-    TokenType::TTBacktickString(_) => "backtick_string"
-    TokenType::TTMLBacktickString(_) => "ml_backtick_string"
     TokenType::TTComment(_) => "comment"
     TokenType::TTNewline => "newline"
     TokenType::TTEOF => "eof"
-    TokenType::TTError(_) => "error"
+    TokenType::TTUnusedError(_) => "error"
   }
 }
 
 // Extract string value from token type
+
+///|
 fn tt_str(tt : TokenType) -> String {
   match tt {
     TokenType::TTBasicString(s) => s
@@ -1437,15 +1909,23 @@ fn tt_str(tt : TokenType) -> String {
 }
 
 // Skip newlines and comments
+
+///|
 fn ps_skip_nl(st : ParserState) -> ParserState {
   let mut s = st
   while true {
     match ps_current(s) {
-      Some(t) => {
-        if tt_eq(t.token_type, TokenType::TTNewline) { s = ps_advance(s) }
-        else if (match t.token_type { TokenType::TTComment(_) => true; _ => false }) { s = ps_advance(s) }
-        else { break }
-      }
+      Some(t) =>
+        if tt_eq(t.token_type, TokenType::TTNewline) {
+          s = ps_advance(s)
+        } else if (match t.token_type {
+            TokenType::TTComment(_) => true
+            _ => false
+          }) {
+          s = ps_advance(s)
+        } else {
+          break
+        }
       None => break
     }
   }
@@ -1453,27 +1933,40 @@ fn ps_skip_nl(st : ParserState) -> ParserState {
 }
 
 // Expect a specific token type
-fn ps_expect(st : ParserState, expected : TokenType, desc : String) -> TomlResult[(Token, ParserState)] {
+
+///|
+fn ps_expect(
+  st : ParserState,
+  expected : TokenType,
+  desc : String,
+) -> TomlResult[(Token, ParserState)] {
   match ps_current(st) {
-    Some(tok) => {
+    Some(tok) =>
       if tt_eq(tok.token_type, expected) {
         TomlResult::Ok((tok, ps_advance(st)))
       } else {
-        let err = mk_error(TomlErrorKind::UnexpectedToken(tt_to_string(tok.token_type), desc), mk_pos(tok.line, tok.column, 0, ""))
+        let err = mk_error(
+          TomlErrorKind::UnexpectedToken(tt_to_string(tok.token_type), desc),
+          mk_pos(tok.line, tok.column, 0, ""),
+        )
         TomlResult::Err(err)
       }
-    }
     None => {
-      let err = mk_error(TomlErrorKind::UnexpectedEndOfInput, mk_pos(0, 0, 0, ""))
+      let err = mk_error(
+        TomlErrorKind::UnexpectedEndOfInput,
+        mk_pos(0, 0, 0, ""),
+      )
       TomlResult::Err(err)
     }
   }
 }
 
 // Parse a key (bare, basic string, or literal string)
+
+///|
 fn ps_key(st : ParserState) -> TomlResult[(String, ParserState)] {
   match ps_current(st) {
-    Some(tok) => {
+    Some(tok) =>
       match tok.token_type {
         TokenType::TTBareKey(k) => TomlResult::Ok((k, ps_advance(st)))
         TokenType::TTBasicString(k) => TomlResult::Ok((k, ps_advance(st)))
@@ -1483,19 +1976,26 @@ fn ps_key(st : ParserState) -> TomlResult[(String, ParserState)] {
         TokenType::TTBacktickString(k) => TomlResult::Ok((k, ps_advance(st)))
         TokenType::TTMLBacktickString(k) => TomlResult::Ok((k, ps_advance(st)))
         _ => {
-          let err = mk_error(TomlErrorKind::InvalidKey(tt_str(tok.token_type)), mk_pos(tok.line, tok.column, 0, ""))
+          let err = mk_error(
+            TomlErrorKind::InvalidKey(tt_str(tok.token_type)),
+            mk_pos(tok.line, tok.column, 0, ""),
+          )
           TomlResult::Err(err)
         }
       }
-    }
     None => {
-      let err = mk_error(TomlErrorKind::UnexpectedEndOfInput, mk_pos(0, 0, 0, ""))
+      let err = mk_error(
+        TomlErrorKind::UnexpectedEndOfInput,
+        mk_pos(0, 0, 0, ""),
+      )
       TomlResult::Err(err)
     }
   }
 }
 
 // Parse dotted key
+
+///|
 fn ps_dotted_key(st : ParserState) -> TomlResult[(String, ParserState)] {
   match ps_key(st) {
     TomlResult::Ok((first, s1)) => {
@@ -1503,7 +2003,7 @@ fn ps_dotted_key(st : ParserState) -> TomlResult[(String, ParserState)] {
       let mut s2 = ps_skip_nl(s1)
       while true {
         match ps_current(s2) {
-          Some(t) => {
+          Some(t) =>
             if tt_eq(t.token_type, TokenType::TTDot) {
               let s3 = ps_advance(s2)
               match ps_key(s3) {
@@ -1513,8 +2013,9 @@ fn ps_dotted_key(st : ParserState) -> TomlResult[(String, ParserState)] {
                 }
                 TomlResult::Err(e) => return TomlResult::Err(e)
               }
-            } else { break }
-          }
+            } else {
+              break
+            }
           None => break
         }
       }
@@ -1525,54 +2026,69 @@ fn ps_dotted_key(st : ParserState) -> TomlResult[(String, ParserState)] {
 }
 
 // Parse a value
+
+///|
 fn ps_value(st : ParserState) -> TomlResult[(TomlValue, ParserState)] {
   match ps_current(st) {
     None => {
-      let err = mk_error(TomlErrorKind::UnexpectedEndOfInput, mk_pos(0, 0, 0, ""))
+      let err = mk_error(
+        TomlErrorKind::UnexpectedEndOfInput,
+        mk_pos(0, 0, 0, ""),
+      )
       TomlResult::Err(err)
     }
-    Some(tok) => {
+    Some(tok) =>
       match tok.token_type {
-        TokenType::TTBasicString(s) => TomlResult::Ok((TomlValue::Str(s), ps_advance(st)))
-        TokenType::TTLiteralString(s) => TomlResult::Ok((TomlValue::Str(s), ps_advance(st)))
-        TokenType::TTMLBasicString(s) => TomlResult::Ok((TomlValue::Str(s), ps_advance(st)))
-        TokenType::TTMLLiteralString(s) => TomlResult::Ok((TomlValue::Str(s), ps_advance(st)))
-        TokenType::TTBacktickString(s) => TomlResult::Ok((TomlValue::Str(s), ps_advance(st)))
-        TokenType::TTMLBacktickString(s) => TomlResult::Ok((TomlValue::Str(s), ps_advance(st)))
-        TokenType::TTInteger(s) => {
+        TokenType::TTBasicString(s) =>
+          TomlResult::Ok((TomlValue::Str(s), ps_advance(st)))
+        TokenType::TTLiteralString(s) =>
+          TomlResult::Ok((TomlValue::Str(s), ps_advance(st)))
+        TokenType::TTMLBasicString(s) =>
+          TomlResult::Ok((TomlValue::Str(s), ps_advance(st)))
+        TokenType::TTMLLiteralString(s) =>
+          TomlResult::Ok((TomlValue::Str(s), ps_advance(st)))
+        TokenType::TTBacktickString(s) =>
+          TomlResult::Ok((TomlValue::Str(s), ps_advance(st)))
+        TokenType::TTMLBacktickString(s) =>
+          TomlResult::Ok((TomlValue::Str(s), ps_advance(st)))
+        TokenType::TTInteger(s) =>
           match safe_parse_int(s) {
             Some(i) => TomlResult::Ok((TomlValue::Int(i), ps_advance(st)))
-            None => {
+            None =>
               match safe_parse_hex(s) {
                 Some(i) => TomlResult::Ok((TomlValue::Int(i), ps_advance(st)))
-                None => {
+                None =>
                   match safe_parse_octal(s) {
-                    Some(i) => TomlResult::Ok((TomlValue::Int(i), ps_advance(st)))
-                    None => {
+                    Some(i) =>
+                      TomlResult::Ok((TomlValue::Int(i), ps_advance(st)))
+                    None =>
                       match safe_parse_binary(s) {
-                        Some(i) => TomlResult::Ok((TomlValue::Int(i), ps_advance(st)))
+                        Some(i) =>
+                          TomlResult::Ok((TomlValue::Int(i), ps_advance(st)))
                         None => {
-                          let err = mk_error(TomlErrorKind::InvalidInteger(s), mk_pos(tok.line, tok.column, 0, ""))
+                          let err = mk_error(
+                            TomlErrorKind::InvalidInteger(s),
+                            mk_pos(tok.line, tok.column, 0, ""),
+                          )
                           TomlResult::Err(err)
                         }
                       }
-                    }
                   }
-                }
               }
-            }
           }
-        }
-        TokenType::TTFloat(s) => {
+        TokenType::TTFloat(s) =>
           match safe_parse_float(s) {
             Some(f) => TomlResult::Ok((TomlValue::Float(f), ps_advance(st)))
             None => {
-              let err = mk_error(TomlErrorKind::InvalidFloat(s), mk_pos(tok.line, tok.column, 0, ""))
+              let err = mk_error(
+                TomlErrorKind::InvalidFloat(s),
+                mk_pos(tok.line, tok.column, 0, ""),
+              )
               TomlResult::Err(err)
             }
           }
-        }
-        TokenType::TTBoolean(b) => TomlResult::Ok((TomlValue::Bool(b), ps_advance(st)))
+        TokenType::TTBoolean(b) =>
+          TomlResult::Ok((TomlValue::Bool(b), ps_advance(st)))
         TokenType::TTBracketOpen => ps_array(st)
         TokenType::TTBraceOpen => ps_inline_table(st)
         _ => {
@@ -1581,21 +2097,31 @@ fn ps_value(st : ParserState) -> TomlResult[(TomlValue, ParserState)] {
             match try_parse_any_datetime(raw) {
               Some(dt) => TomlResult::Ok((dt, ps_advance(st)))
               None => {
-                let err = mk_error(TomlErrorKind::InvalidValue(raw), mk_pos(tok.line, tok.column, 0, ""))
+                let err = mk_error(
+                  TomlErrorKind::InvalidValue(raw),
+                  mk_pos(tok.line, tok.column, 0, ""),
+                )
                 TomlResult::Err(err)
               }
             }
           } else {
-            let err = mk_error(TomlErrorKind::UnexpectedToken(tt_to_string(tok.token_type), "value"), mk_pos(tok.line, tok.column, 0, ""))
+            let err = mk_error(
+              TomlErrorKind::UnexpectedToken(
+                tt_to_string(tok.token_type),
+                "value",
+              ),
+              mk_pos(tok.line, tok.column, 0, ""),
+            )
             TomlResult::Err(err)
           }
         }
       }
-    }
   }
 }
 
 // Parse array [...]
+
+///|
 fn ps_array(st : ParserState) -> TomlResult[(TomlValue, ParserState)] {
   match ps_expect(st, TokenType::TTBracketOpen, "[") {
     TomlResult::Err(e) => TomlResult::Err(e)
@@ -1604,13 +2130,15 @@ fn ps_array(st : ParserState) -> TomlResult[(TomlValue, ParserState)] {
       let items : Array[TomlValue] = []
       // Check for empty array
       match ps_current(s2) {
-        Some(t) => {
+        Some(t) =>
           if tt_eq(t.token_type, TokenType::TTBracketClose) {
             return TomlResult::Ok((TomlValue::Array(items), ps_advance(s2)))
           }
-        }
         None => {
-          let err = mk_error(TomlErrorKind::UnexpectedEndOfInput, mk_pos(0, 0, 0, ""))
+          let err = mk_error(
+            TomlErrorKind::UnexpectedEndOfInput,
+            mk_pos(0, 0, 0, ""),
+          )
           return TomlResult::Err(err)
         }
       }
@@ -1623,31 +2151,45 @@ fn ps_array(st : ParserState) -> TomlResult[(TomlValue, ParserState)] {
             items.push(val)
             s2 = ps_skip_nl(s3)
             match ps_current(s2) {
-              Some(t) => {
+              Some(t) =>
                 if tt_eq(t.token_type, TokenType::TTComma) {
                   s2 = ps_advance(s2)
                   s2 = ps_skip_nl(s2)
                   // Trailing comma check
                   match ps_current(s2) {
-                    Some(t2) => {
+                    Some(t2) =>
                       if tt_eq(t2.token_type, TokenType::TTBracketClose) {
-                        return TomlResult::Ok((TomlValue::Array(items), ps_advance(s2)))
+                        return TomlResult::Ok(
+                          (TomlValue::Array(items), ps_advance(s2)),
+                        )
                       }
-                    }
                     None => {
-                      let err = mk_error(TomlErrorKind::UnexpectedEndOfInput, mk_pos(0, 0, 0, ""))
+                      let err = mk_error(
+                        TomlErrorKind::UnexpectedEndOfInput,
+                        mk_pos(0, 0, 0, ""),
+                      )
                       return TomlResult::Err(err)
                     }
                   }
                 } else if tt_eq(t.token_type, TokenType::TTBracketClose) {
-                  return TomlResult::Ok((TomlValue::Array(items), ps_advance(s2)))
+                  return TomlResult::Ok(
+                    (TomlValue::Array(items), ps_advance(s2)),
+                  )
                 } else {
-                  let err = mk_error(TomlErrorKind::UnexpectedToken(tt_to_string(t.token_type), ", or ]"), mk_pos(t.line, t.column, 0, ""))
+                  let err = mk_error(
+                    TomlErrorKind::UnexpectedToken(
+                      tt_to_string(t.token_type),
+                      ", or ]",
+                    ),
+                    mk_pos(t.line, t.column, 0, ""),
+                  )
                   return TomlResult::Err(err)
                 }
-              }
               None => {
-                let err = mk_error(TomlErrorKind::UnexpectedEndOfInput, mk_pos(0, 0, 0, ""))
+                let err = mk_error(
+                  TomlErrorKind::UnexpectedEndOfInput,
+                  mk_pos(0, 0, 0, ""),
+                )
                 return TomlResult::Err(err)
               }
             }
@@ -1660,6 +2202,8 @@ fn ps_array(st : ParserState) -> TomlResult[(TomlValue, ParserState)] {
 }
 
 // Parse inline table { key = value, ... }
+
+///|
 fn ps_inline_table(st : ParserState) -> TomlResult[(TomlValue, ParserState)] {
   match ps_expect(st, TokenType::TTBraceOpen, "{") {
     TomlResult::Err(e) => TomlResult::Err(e)
@@ -1667,20 +2211,22 @@ fn ps_inline_table(st : ParserState) -> TomlResult[(TomlValue, ParserState)] {
       let mut s2 = ps_skip_nl(s1)
       let tbl : Map[String, TomlValue] = Map([])
       match ps_current(s2) {
-        Some(t) => {
+        Some(t) =>
           if tt_eq(t.token_type, TokenType::TTBraceClose) {
             return TomlResult::Ok((TomlValue::InlineTable(tbl), ps_advance(s2)))
           }
-        }
         None => {
-          let err = mk_error(TomlErrorKind::UnexpectedEndOfInput, mk_pos(0, 0, 0, ""))
+          let err = mk_error(
+            TomlErrorKind::UnexpectedEndOfInput,
+            mk_pos(0, 0, 0, ""),
+          )
           return TomlResult::Err(err)
         }
       }
       while true {
         match ps_dotted_key(s2) {
           TomlResult::Err(e) => return TomlResult::Err(e)
-          TomlResult::Ok((key, s3)) => {
+          TomlResult::Ok((key, s3)) =>
             match ps_expect(s3, TokenType::TTEquals, "=") {
               TomlResult::Err(e) => return TomlResult::Err(e)
               TomlResult::Ok((_, s4)) => {
@@ -1691,30 +2237,44 @@ fn ps_inline_table(st : ParserState) -> TomlResult[(TomlValue, ParserState)] {
                     tbl.set(key, val)
                     s2 = ps_skip_nl(s6)
                     match ps_current(s2) {
-                      Some(t) => {
+                      Some(t) =>
                         if tt_eq(t.token_type, TokenType::TTComma) {
                           s2 = ps_advance(s2)
                           s2 = ps_skip_nl(s2)
                           match ps_current(s2) {
-                            Some(t2) => {
+                            Some(t2) =>
                               if tt_eq(t2.token_type, TokenType::TTBraceClose) {
-                                return TomlResult::Ok((TomlValue::InlineTable(tbl), ps_advance(s2)))
+                                return TomlResult::Ok(
+                                  (TomlValue::InlineTable(tbl), ps_advance(s2)),
+                                )
                               }
-                            }
                             None => {
-                              let err = mk_error(TomlErrorKind::UnexpectedEndOfInput, mk_pos(0, 0, 0, ""))
+                              let err = mk_error(
+                                TomlErrorKind::UnexpectedEndOfInput,
+                                mk_pos(0, 0, 0, ""),
+                              )
                               return TomlResult::Err(err)
                             }
                           }
                         } else if tt_eq(t.token_type, TokenType::TTBraceClose) {
-                          return TomlResult::Ok((TomlValue::InlineTable(tbl), ps_advance(s2)))
+                          return TomlResult::Ok(
+                            (TomlValue::InlineTable(tbl), ps_advance(s2)),
+                          )
                         } else {
-                          let err = mk_error(TomlErrorKind::UnexpectedToken(tt_to_string(t.token_type), ", or }"), mk_pos(t.line, t.column, 0, ""))
+                          let err = mk_error(
+                            TomlErrorKind::UnexpectedToken(
+                              tt_to_string(t.token_type),
+                              ", or }",
+                            ),
+                            mk_pos(t.line, t.column, 0, ""),
+                          )
                           return TomlResult::Err(err)
                         }
-                      }
                       None => {
-                        let err = mk_error(TomlErrorKind::UnexpectedEndOfInput, mk_pos(0, 0, 0, ""))
+                        let err = mk_error(
+                          TomlErrorKind::UnexpectedEndOfInput,
+                          mk_pos(0, 0, 0, ""),
+                        )
                         return TomlResult::Err(err)
                       }
                     }
@@ -1722,7 +2282,6 @@ fn ps_inline_table(st : ParserState) -> TomlResult[(TomlValue, ParserState)] {
                 }
               }
             }
-          }
         }
       }
       TomlResult::Ok((TomlValue::InlineTable(tbl), s2))
@@ -1731,10 +2290,14 @@ fn ps_inline_table(st : ParserState) -> TomlResult[(TomlValue, ParserState)] {
 }
 
 // Key-value pair: key = value
-fn ps_key_value(st : ParserState) -> TomlResult[(String, TomlValue, ParserState)] {
+
+///|
+fn ps_key_value(
+  st : ParserState,
+) -> TomlResult[(String, TomlValue, ParserState)] {
   match ps_dotted_key(st) {
     TomlResult::Err(e) => TomlResult::Err(e)
-    TomlResult::Ok((key, s1)) => {
+    TomlResult::Ok((key, s1)) =>
       match ps_expect(s1, TokenType::TTEquals, "=") {
         TomlResult::Err(e) => TomlResult::Err(e)
         TomlResult::Ok((_, s2)) => {
@@ -1745,14 +2308,21 @@ fn ps_key_value(st : ParserState) -> TomlResult[(String, TomlValue, ParserState)
           }
         }
       }
-    }
   }
 }
 
 // Set value at dotted path in table
-fn set_dotted(table : Map[String, TomlValue], dotted : String, value : TomlValue) -> Map[String, TomlValue] {
+
+///|
+fn set_dotted(
+  table : Map[String, TomlValue],
+  dotted : String,
+  value : TomlValue,
+) -> Map[String, TomlValue] {
   let parts = dotted.split(".").to_array().map(fn(sv) { sv.to_owned() })
-  if parts.length() == 0 { return table }
+  if parts.length() == 0 {
+    return table
+  }
   if parts.length() == 1 {
     let r = table
     r.set(parts[0], value)
@@ -1762,16 +2332,24 @@ fn set_dotted(table : Map[String, TomlValue], dotted : String, value : TomlValue
     let rest_parts : Array[String] = {
       let arr : Array[String] = []
       let mut i = 1
-      while i < parts.length() { arr.push(parts[i]); i = i + 1 }
+      while i < parts.length() {
+        arr.push(parts[i])
+        i = i + 1
+      }
       arr
     }
-    let rest = rest_parts[0]
+    let _rest = rest_parts[0]
     let mut ri = 1
-    while ri < rest_parts.length() { ri = ri + 1 }
+    while ri < rest_parts.length() {
+      ri = ri + 1
+    }
     // Build rest key
     let mut rk = rest_parts[0]
     let mut rj = 1
-    while rj < rest_parts.length() { rk = rk + "." + rest_parts[rj]; rj = rj + 1 }
+    while rj < rest_parts.length() {
+      rk = rk + "." + rest_parts[rj]
+      rj = rj + 1
+    }
     let r = table
     match table.get(first) {
       Some(TomlValue::Table(existing)) => {
@@ -1793,6 +2371,8 @@ fn set_dotted(table : Map[String, TomlValue], dotted : String, value : TomlValue
 }
 
 // Parse table header [table.name]
+
+///|
 fn ps_table_header(st : ParserState) -> TomlResult[(String, ParserState)] {
   // [ already consumed by caller
   let s1 = ps_advance(st)
@@ -1810,8 +2390,10 @@ fn ps_table_header(st : ParserState) -> TomlResult[(String, ParserState)] {
 }
 
 // Parse array-of-tables header [[array.name]]
+
+///|
 fn ps_array_table_header(st : ParserState) -> TomlResult[(String, ParserState)] {
-  let s1 = ps_advance(st)  // consume second [
+  let s1 = ps_advance(st) // consume second [
   let s2 = ps_skip_nl(s1)
   match ps_dotted_key(s2) {
     TomlResult::Err(e) => TomlResult::Err(e)
@@ -1819,22 +2401,28 @@ fn ps_array_table_header(st : ParserState) -> TomlResult[(String, ParserState)] 
       let s4 = ps_skip_nl(s3)
       match ps_expect(s4, TokenType::TTBracketClose, "]") {
         TomlResult::Err(e) => TomlResult::Err(e)
-        TomlResult::Ok((_, s5)) => {
+        TomlResult::Ok((_, s5)) =>
           match ps_expect(s5, TokenType::TTBracketClose, "]") {
             TomlResult::Ok((_, s6)) => TomlResult::Ok((key, s6))
             TomlResult::Err(e) => TomlResult::Err(e)
           }
-        }
       }
     }
   }
 }
 
 // Set array of tables entry
-fn set_array_table(table : Map[String, TomlValue], dotted : String) -> Map[String, TomlValue] {
+
+///|
+fn set_array_table(
+  table : Map[String, TomlValue],
+  dotted : String,
+) -> Map[String, TomlValue] {
   let r = table
   let parts = dotted.split(".").to_array().map(fn(sv) { sv.to_owned() })
-  if parts.length() == 0 { return table }
+  if parts.length() == 0 {
+    return table
+  }
   if parts.length() == 1 {
     match table.get(parts[0]) {
       Some(TomlValue::Array(arr)) => {
@@ -1854,13 +2442,18 @@ fn set_array_table(table : Map[String, TomlValue], dotted : String) -> Map[Strin
 }
 
 // Get nested value from table by dotted key
-fn table_get_nested(table : Map[String, TomlValue], dotted : String) -> TomlValue? {
+
+///|
+fn _table_get_nested(
+  table : Map[String, TomlValue],
+  dotted : String,
+) -> TomlValue? {
   let parts = dotted.split(".").to_array().map(fn(sv) { sv.to_owned() })
   let mut current : TomlValue? = Some(TomlValue::Table(table))
   let mut i = 0
   while i < parts.length() {
     match current {
-      Some(TomlValue::Table(t)) => { current = t.get(parts[i]) }
+      Some(TomlValue::Table(t)) => current = t.get(parts[i])
       _ => return None
     }
     i = i + 1
@@ -1869,10 +2462,17 @@ fn table_get_nested(table : Map[String, TomlValue], dotted : String) -> TomlValu
 }
 
 // Parse the full document
+
+///|
 /// Ensure all parent tables exist for a dotted key path
-fn ensure_table_path(table : Map[String, TomlValue], dotted : String) -> Map[String, TomlValue] {
+fn ensure_table_path(
+  table : Map[String, TomlValue],
+  dotted : String,
+) -> Map[String, TomlValue] {
   let parts = dotted.split(".").to_array().map(fn(sv) { sv.to_owned() })
-  if parts.length() == 0 { return table }
+  if parts.length() == 0 {
+    return table
+  }
   let mut r = table
   let mut path_so_far = ""
   let mut pi = 0
@@ -1880,7 +2480,9 @@ fn ensure_table_path(table : Map[String, TomlValue], dotted : String) -> Map[Str
     let key = parts[pi]
     let full = if path_so_far == "" { key } else { path_so_far + "." + key }
     match r.get(key) {
-      Some(TomlValue::Table(_)) => { let _ = 0 }
+      Some(TomlValue::Table(_)) => {
+        let _ = 0
+      }
       Some(TomlValue::InlineTable(t)) => {
         let updated = r
         updated.set(key, TomlValue::Table(t))
@@ -1897,21 +2499,25 @@ fn ensure_table_path(table : Map[String, TomlValue], dotted : String) -> Map[Str
   r
 }
 
-fn ps_document(tokens : Array[Token], st : ParserState) -> TomlResult[(TomlValue, ParserState)] {
+///|
+fn ps_document(
+  _tokens : Array[Token],
+  st : ParserState,
+) -> TomlResult[(TomlValue, ParserState)] {
   let mut table : Map[String, TomlValue] = Map([])
   let mut s = ps_skip_nl(st)
   while true {
     match ps_current(s) {
       None => break
-      Some(t) => {
+      Some(t) =>
         match t.token_type {
           TokenType::TTEOF => break
-          TokenType::TTNewline => { s = ps_advance(s) }
-          TokenType::TTComment(_) => { s = ps_advance(s) }
+          TokenType::TTNewline => s = ps_advance(s)
+          TokenType::TTComment(_) => s = ps_advance(s)
           TokenType::TTBracketOpen => {
             let s1 = ps_advance(s)
             match ps_current(s1) {
-              Some(t2) => {
+              Some(t2) =>
                 if tt_eq(t2.token_type, TokenType::TTBracketOpen) {
                   match ps_array_table_header(s1) {
                     TomlResult::Err(e) => return TomlResult::Err(e)
@@ -1929,14 +2535,16 @@ fn ps_document(tokens : Array[Token], st : ParserState) -> TomlResult[(TomlValue
                     }
                   }
                 }
-              }
               None => {
-                let err = mk_error(TomlErrorKind::UnexpectedEndOfInput, mk_pos(0, 0, 0, ""))
+                let err = mk_error(
+                  TomlErrorKind::UnexpectedEndOfInput,
+                  mk_pos(0, 0, 0, ""),
+                )
                 return TomlResult::Err(err)
               }
             }
           }
-          _ => {
+          _ =>
             match ps_key_value(s) {
               TomlResult::Err(e) => return TomlResult::Err(e)
               TomlResult::Ok((key, val, s2)) => {
@@ -1944,9 +2552,7 @@ fn ps_document(tokens : Array[Token], st : ParserState) -> TomlResult[(TomlValue
                 s = ps_skip_nl(s2)
               }
             }
-          }
         }
-      }
     }
   }
   TomlResult::Ok((TomlValue::Table(table), s))
@@ -1956,6 +2562,7 @@ fn ps_document(tokens : Array[Token], st : ParserState) -> TomlResult[(TomlValue
 // SECTION 8: Public parsing API
 // ============================================================
 
+///|
 /// Parse TOML string to TomlValue. Raises on error.
 pub fn parse(source : String) -> TomlValue? {
   let tokens = scan_all_tokens(source)
@@ -1966,6 +2573,7 @@ pub fn parse(source : String) -> TomlValue? {
   }
 }
 
+///|
 /// Try to parse TOML, returning None on error
 pub fn try_parse(source : String) -> TomlValue? {
   let tokens = scan_all_tokens(source)
@@ -1976,6 +2584,7 @@ pub fn try_parse(source : String) -> TomlValue? {
   }
 }
 
+///|
 /// Parse returning detailed result with errors
 pub fn parse_with_errors(source : String) -> TomlResult[TomlValue] {
   let tokens = scan_all_tokens(source)
@@ -1986,19 +2595,28 @@ pub fn parse_with_errors(source : String) -> TomlResult[TomlValue] {
   }
 }
 
+///|
 /// Collect all parse errors
 pub fn collect_parse_errors(source : String) -> Array[TomlError] {
   let tokens = scan_all_tokens(source)
   let state = parser_init(tokens)
   match ps_document(tokens, state) {
     TomlResult::Ok(_) => state.errors
-    TomlResult::Err(e) => { let mut _e = state.errors; _e.push(e); _e }
+    TomlResult::Err(e) => {
+      let mut _e = state.errors
+      _e.push(e)
+      _e
+    }
   }
 }
 
+///|
 /// Check if string is valid TOML
 pub fn is_valid_toml(source : String) -> Bool {
-  match try_parse(source) { Some(_) => true; None => false }
+  match try_parse(source) {
+    Some(_) => true
+    None => false
+  }
 }
 
 // ============================================================
@@ -2008,75 +2626,127 @@ pub fn is_valid_toml(source : String) -> Bool {
 /// Builder for constructing TomlValue programmatically
 /// Provides fluent interface for creating TOML documents
 
+///|
 /// Create an empty table builder
-pub fn builder() -> Map[String, TomlValue] { Map([]) }
+pub fn builder() -> Map[String, TomlValue] {
+  Map([])
+}
 
+///|
 /// Set a string value in the builder table
-pub fn builder_set_string(table : Map[String, TomlValue], key : String, value : String) -> Map[String, TomlValue] {
+pub fn builder_set_string(
+  table : Map[String, TomlValue],
+  key : String,
+  value : String,
+) -> Map[String, TomlValue] {
   let r = table
   r.set(key, TomlValue::Str(value))
   r
 }
 
+///|
 /// Set an integer value in the builder table
-pub fn builder_set_int(table : Map[String, TomlValue], key : String, value : Int) -> Map[String, TomlValue] {
+pub fn builder_set_int(
+  table : Map[String, TomlValue],
+  key : String,
+  value : Int,
+) -> Map[String, TomlValue] {
   let r = table
   r.set(key, TomlValue::Int(value))
   r
 }
 
+///|
 /// Set a float value in the builder table
-pub fn builder_set_float(table : Map[String, TomlValue], key : String, value : Double) -> Map[String, TomlValue] {
+pub fn builder_set_float(
+  table : Map[String, TomlValue],
+  key : String,
+  value : Double,
+) -> Map[String, TomlValue] {
   let r = table
   r.set(key, TomlValue::Float(value))
   r
 }
 
+///|
 /// Set a boolean value in the builder table
-pub fn builder_set_bool(table : Map[String, TomlValue], key : String, value : Bool) -> Map[String, TomlValue] {
+pub fn builder_set_bool(
+  table : Map[String, TomlValue],
+  key : String,
+  value : Bool,
+) -> Map[String, TomlValue] {
   let r = table
   r.set(key, TomlValue::Bool(value))
   r
 }
 
+///|
 /// Set a date-time value in the builder table
-pub fn builder_set_datetime(table : Map[String, TomlValue], key : String, value : String) -> Map[String, TomlValue] {
+pub fn builder_set_datetime(
+  table : Map[String, TomlValue],
+  key : String,
+  value : String,
+) -> Map[String, TomlValue] {
   let r = table
   r.set(key, TomlValue::OffsetDateTime({ datetime: value }))
   r
 }
 
+///|
 /// Set a local date-time value in the builder table
-pub fn builder_set_local_datetime(table : Map[String, TomlValue], key : String, value : String) -> Map[String, TomlValue] {
+pub fn builder_set_local_datetime(
+  table : Map[String, TomlValue],
+  key : String,
+  value : String,
+) -> Map[String, TomlValue] {
   let r = table
   r.set(key, TomlValue::LocalDateTime({ datetime: value }))
   r
 }
 
+///|
 /// Set a local date value in the builder table
-pub fn builder_set_date(table : Map[String, TomlValue], key : String, value : String) -> Map[String, TomlValue] {
+pub fn builder_set_date(
+  table : Map[String, TomlValue],
+  key : String,
+  value : String,
+) -> Map[String, TomlValue] {
   let r = table
   r.set(key, TomlValue::LocalDate({ date: value }))
   r
 }
 
+///|
 /// Set a local time value in the builder table
-pub fn builder_set_time(table : Map[String, TomlValue], key : String, value : String) -> Map[String, TomlValue] {
+pub fn builder_set_time(
+  table : Map[String, TomlValue],
+  key : String,
+  value : String,
+) -> Map[String, TomlValue] {
   let r = table
   r.set(key, TomlValue::LocalTime({ time: value }))
   r
 }
 
+///|
 /// Set a TomlValue directly
-pub fn builder_set(table : Map[String, TomlValue], key : String, value : TomlValue) -> Map[String, TomlValue] {
+pub fn builder_set(
+  table : Map[String, TomlValue],
+  key : String,
+  value : TomlValue,
+) -> Map[String, TomlValue] {
   let r = table
   r.set(key, value)
   r
 }
 
+///|
 /// Create an array value from a list of TomlValue
-pub fn builder_array(items : Array[TomlValue]) -> TomlValue { TomlValue::Array(items) }
+pub fn builder_array(items : Array[TomlValue]) -> TomlValue {
+  TomlValue::Array(items)
+}
 
+///|
 /// Create an inline table from key-value pairs
 pub fn builder_inline_table(entries : Array[(String, TomlValue)]) -> TomlValue {
   let tbl : Map[String, TomlValue] = Map([])
@@ -2088,6 +2758,7 @@ pub fn builder_inline_table(entries : Array[(String, TomlValue)]) -> TomlValue {
   TomlValue::InlineTable(tbl)
 }
 
+///|
 /// Create a nested table from key-value pairs
 pub fn builder_table(entries : Array[(String, TomlValue)]) -> TomlValue {
   let tbl : Map[String, TomlValue] = Map([])
@@ -2099,40 +2770,72 @@ pub fn builder_table(entries : Array[(String, TomlValue)]) -> TomlValue {
   TomlValue::Table(tbl)
 }
 
+///|
 /// Create a string value
-pub fn v_str(s : String) -> TomlValue { TomlValue::Str(s) }
+pub fn v_str(s : String) -> TomlValue {
+  TomlValue::Str(s)
+}
 
+///|
 /// Create an integer value
-pub fn v_int(i : Int) -> TomlValue { TomlValue::Int(i) }
+pub fn v_int(i : Int) -> TomlValue {
+  TomlValue::Int(i)
+}
 
+///|
 /// Create a float value
-pub fn v_float(f : Double) -> TomlValue { TomlValue::Float(f) }
+pub fn v_float(f : Double) -> TomlValue {
+  TomlValue::Float(f)
+}
 
+///|
 /// Create a boolean value
-pub fn v_bool(b : Bool) -> TomlValue { TomlValue::Bool(b) }
+pub fn v_bool(b : Bool) -> TomlValue {
+  TomlValue::Bool(b)
+}
 
+///|
 /// Create a date-time value
-pub fn v_datetime(s : String) -> TomlValue { TomlValue::OffsetDateTime({ datetime: s }) }
+pub fn v_datetime(s : String) -> TomlValue {
+  TomlValue::OffsetDateTime({ datetime: s })
+}
 
+///|
 /// Create a local date-time value
-pub fn v_local_datetime(s : String) -> TomlValue { TomlValue::LocalDateTime({ datetime: s }) }
+pub fn v_local_datetime(s : String) -> TomlValue {
+  TomlValue::LocalDateTime({ datetime: s })
+}
 
+///|
 /// Create a local date value
-pub fn v_date(s : String) -> TomlValue { TomlValue::LocalDate({ date: s }) }
+pub fn v_date(s : String) -> TomlValue {
+  TomlValue::LocalDate({ date: s })
+}
 
+///|
 /// Create a local time value
-pub fn v_time(s : String) -> TomlValue { TomlValue::LocalTime({ time: s }) }
+pub fn v_time(s : String) -> TomlValue {
+  TomlValue::LocalTime({ time: s })
+}
 
+///|
 /// Create an array value
-pub fn v_array(items : Array[TomlValue]) -> TomlValue { TomlValue::Array(items) }
+pub fn v_array(items : Array[TomlValue]) -> TomlValue {
+  TomlValue::Array(items)
+}
 
+///|
 /// Remove a key from the builder table
-pub fn builder_remove(table : Map[String, TomlValue], key : String) -> Map[String, TomlValue] {
+pub fn builder_remove(
+  table : Map[String, TomlValue],
+  key : String,
+) -> Map[String, TomlValue] {
   let r = table
   r.remove(key)
   r
 }
 
+///|
 /// Check if a key exists in the builder
 pub fn builder_has(table : Map[String, TomlValue], key : String) -> Bool {
   match table.get(key) {
@@ -2141,19 +2844,33 @@ pub fn builder_has(table : Map[String, TomlValue], key : String) -> Bool {
   }
 }
 
+///|
 /// Get the number of entries in the builder
-pub fn builder_len(table : Map[String, TomlValue]) -> Int { table.length() }
+pub fn builder_len(table : Map[String, TomlValue]) -> Int {
+  table.length()
+}
 
+///|
 /// Build the final TomlValue from the builder
-pub fn builder_build(table : Map[String, TomlValue]) -> TomlValue { TomlValue::Table(table) }
+pub fn builder_build(table : Map[String, TomlValue]) -> TomlValue {
+  TomlValue::Table(table)
+}
 
+///|
 /// Set a value at a dotted path in the builder
-pub fn builder_set_path(table : Map[String, TomlValue], dotted : String, value : TomlValue) -> Map[String, TomlValue] {
+pub fn builder_set_path(
+  table : Map[String, TomlValue],
+  dotted : String,
+  value : TomlValue,
+) -> Map[String, TomlValue] {
   set_dotted(table, dotted, value)
 }
 
+///|
 /// Create a builder pre-populated with some values
-pub fn builder_from(entries : Array[(String, TomlValue)]) -> Map[String, TomlValue] {
+pub fn builder_from(
+  entries : Array[(String, TomlValue)],
+) -> Map[String, TomlValue] {
   let tbl : Map[String, TomlValue] = Map([])
   let mut i = 0
   while i < entries.length() {
@@ -2163,6 +2880,7 @@ pub fn builder_from(entries : Array[(String, TomlValue)]) -> Map[String, TomlVal
   tbl
 }
 
+///|
 /// Create an array of a single type (strings)
 pub fn v_array_str(items : Array[String]) -> TomlValue {
   let result : Array[TomlValue] = []
@@ -2174,6 +2892,7 @@ pub fn v_array_str(items : Array[String]) -> TomlValue {
   TomlValue::Array(result)
 }
 
+///|
 /// Create an array of integers
 pub fn v_array_int(items : Array[Int]) -> TomlValue {
   let result : Array[TomlValue] = []
@@ -2185,6 +2904,7 @@ pub fn v_array_int(items : Array[Int]) -> TomlValue {
   TomlValue::Array(result)
 }
 
+///|
 /// Create an array of floats
 pub fn v_array_float(items : Array[Double]) -> TomlValue {
   let result : Array[TomlValue] = []
@@ -2196,6 +2916,7 @@ pub fn v_array_float(items : Array[Double]) -> TomlValue {
   TomlValue::Array(result)
 }
 
+///|
 /// Create an array of booleans
 pub fn v_array_bool(items : Array[Bool]) -> TomlValue {
   let result : Array[TomlValue] = []
@@ -2207,6 +2928,7 @@ pub fn v_array_bool(items : Array[Bool]) -> TomlValue {
   TomlValue::Array(result)
 }
 
+///|
 /// Convenience: build and serialize in one step
 pub fn builder_serialize(table : Map[String, TomlValue]) -> String {
   serialize(TomlValue::Table(table))
@@ -2215,6 +2937,8 @@ pub fn builder_serialize(table : Map[String, TomlValue]) -> String {
 // ============================================================
 // SECTION 8C: Validation Module
 // ============================================================
+
+///|
 /// Validation result for a TOML value
 pub struct ValidationResult {
   valid : Bool
@@ -2222,26 +2946,36 @@ pub struct ValidationResult {
   warnings : Array[String]
 }
 
+///|
 fn validation_ok() -> ValidationResult {
   { valid: true, errors: [], warnings: [] }
 }
 
+///|
 fn validation_fail(errors : Array[String]) -> ValidationResult {
-  { valid: false, errors: errors, warnings: [] }
+  { valid: false, errors, warnings: [] }
 }
 
+///|
 fn validation_warn(warnings : Array[String]) -> ValidationResult {
-  { valid: true, errors: [], warnings: warnings }
+  { valid: true, errors: [], warnings }
 }
 
-pub impl Show for ValidationResult with to_string(self : ValidationResult) -> String {
+///|
+pub impl Show for ValidationResult with fn to_string(self : ValidationResult) -> String {
   if self.valid {
-    "Valid" + (if self.warnings.length() > 0 { " (with " + self.warnings.length().to_string() + " warnings)" } else { "" })
+    "Valid" +
+    (if self.warnings.length() > 0 {
+      " (with " + self.warnings.length().to_string() + " warnings)"
+    } else {
+      ""
+    })
   } else {
     "Invalid: " + self.errors.length().to_string() + " error(s)"
   }
 }
 
+///|
 /// Validate a TomlValue for common issues
 pub fn validate(value : TomlValue) -> ValidationResult {
   let (errors, warnings) = validate_recursive(value, "", 0)
@@ -2254,7 +2988,12 @@ pub fn validate(value : TomlValue) -> ValidationResult {
   }
 }
 
-fn validate_recursive(value : TomlValue, path : String, depth : Int) -> (Array[String], Array[String]) {
+///|
+fn validate_recursive(
+  value : TomlValue,
+  path : String,
+  depth : Int,
+) -> (Array[String], Array[String]) {
   let errors : Array[String] = []
   let warnings : Array[String] = []
   // Check depth
@@ -2268,7 +3007,12 @@ fn validate_recursive(value : TomlValue, path : String, depth : Int) -> (Array[S
       while i < s.length() {
         let c = s[i].to_int()
         if c < 32 && c != 9 && c != 10 && c != 13 {
-          errors.push("Control character at position " + i.to_string() + " in string at: " + path)
+          errors.push(
+            "Control character at position " +
+            i.to_string() +
+            " in string at: " +
+            path,
+          )
         }
         i = i + 1
       }
@@ -2281,7 +3025,9 @@ fn validate_recursive(value : TomlValue, path : String, depth : Int) -> (Array[S
     }
     TomlValue::Array(arr) => {
       if arr.length() > 10000 {
-        warnings.push("Large array (" + arr.length().to_string() + " elements) at: " + path)
+        warnings.push(
+          "Large array (" + arr.length().to_string() + " elements) at: " + path,
+        )
       }
       if arr.length() > 1 {
         let first_type = arr[0].type_name()
@@ -2296,11 +3042,21 @@ fn validate_recursive(value : TomlValue, path : String, depth : Int) -> (Array[S
       }
       let mut k = 0
       while k < arr.length() {
-        let (sub_e, sub_w) = validate_recursive(arr[k], path + "[" + k.to_string() + "]", depth + 1)
+        let (sub_e, sub_w) = validate_recursive(
+          arr[k],
+          path + "[" + k.to_string() + "]",
+          depth + 1,
+        )
         let mut se = 0
-        while se < sub_e.length() { errors.push(sub_e[se]); se = se + 1 }
+        while se < sub_e.length() {
+          errors.push(sub_e[se])
+          se = se + 1
+        }
         let mut sw = 0
-        while sw < sub_w.length() { warnings.push(sub_w[sw]); sw = sw + 1 }
+        while sw < sub_w.length() {
+          warnings.push(sub_w[sw])
+          sw = sw + 1
+        }
         k = k + 1
       }
     }
@@ -2313,57 +3069,79 @@ fn validate_recursive(value : TomlValue, path : String, depth : Int) -> (Array[S
           errors.push("Empty key found at: " + path)
         }
         if key.length() > 100 {
-          warnings.push("Very long key (" + key.length().to_string() + " chars) at: " + path)
+          warnings.push(
+            "Very long key (" + key.length().to_string() + " chars) at: " + path,
+          )
         }
         let new_path = if path == "" { key } else { path + "." + key }
-        let (sub_e, sub_w) = validate_recursive(entries[m].1, new_path, depth + 1)
+        let (sub_e, sub_w) = validate_recursive(
+          entries[m].1,
+          new_path,
+          depth + 1,
+        )
         let mut se = 0
-        while se < sub_e.length() { errors.push(sub_e[se]); se = se + 1 }
+        while se < sub_e.length() {
+          errors.push(sub_e[se])
+          se = se + 1
+        }
         let mut sw = 0
-        while sw < sub_w.length() { warnings.push(sub_w[sw]); sw = sw + 1 }
+        while sw < sub_w.length() {
+          warnings.push(sub_w[sw])
+          sw = sw + 1
+        }
         m = m + 1
       }
     }
-    _ => { let _ = 0 }
+    _ => {
+      let _ = 0
+    }
   }
   (errors, warnings)
 }
 
+///|
 /// Validate that all datetime strings are well-formed
 pub fn validate_datetimes(value : TomlValue) -> ValidationResult {
   let errors = collect_datetime_errors(value, "")
-  if errors.length() > 0 { validation_fail(errors) } else { validation_ok() }
+  if errors.length() > 0 {
+    validation_fail(errors)
+  } else {
+    validation_ok()
+  }
 }
 
+///|
 fn collect_datetime_errors(value : TomlValue, path : String) -> Array[String] {
   let errors : Array[String] = []
   match value {
-    TomlValue::OffsetDateTime(dt) => {
+    TomlValue::OffsetDateTime(dt) =>
       if !is_valid_datetime_string(dt.datetime) {
         errors.push("Invalid date-time format at: " + path)
       }
-    }
-    TomlValue::LocalDateTime(dt) => {
+    TomlValue::LocalDateTime(dt) =>
       if !is_valid_datetime_string(dt.datetime) {
         errors.push("Invalid local-date-time format at: " + path)
       }
-    }
-    TomlValue::LocalDate(d) => {
+    TomlValue::LocalDate(d) =>
       if !is_valid_date_string(d.date) {
         errors.push("Invalid date format at: " + path)
       }
-    }
-    TomlValue::LocalTime(t) => {
+    TomlValue::LocalTime(t) =>
       if !is_valid_time_string(t.time) {
         errors.push("Invalid time format at: " + path)
       }
-    }
     TomlValue::Array(arr) => {
       let mut i = 0
       while i < arr.length() {
-        let sub = collect_datetime_errors(arr[i], path + "[" + i.to_string() + "]")
+        let sub = collect_datetime_errors(
+          arr[i],
+          path + "[" + i.to_string() + "]",
+        )
         let mut j = 0
-        while j < sub.length() { errors.push(sub[j]); j = j + 1 }
+        while j < sub.length() {
+          errors.push(sub[j])
+          j = j + 1
+        }
         i = i + 1
       }
     }
@@ -2371,46 +3149,74 @@ fn collect_datetime_errors(value : TomlValue, path : String) -> Array[String] {
       let entries = t.to_array()
       let mut k = 0
       while k < entries.length() {
-        let sub = collect_datetime_errors(entries[k].1, path + "." + entries[k].0)
+        let sub = collect_datetime_errors(
+          entries[k].1,
+          path + "." + entries[k].0,
+        )
         let mut j = 0
-        while j < sub.length() { errors.push(sub[j]); j = j + 1 }
+        while j < sub.length() {
+          errors.push(sub[j])
+          j = j + 1
+        }
         k = k + 1
       }
     }
-    _ => { let _ = 0 }
+    _ => {
+      let _ = 0
+    }
   }
   errors
 }
 
+///|
 fn is_valid_datetime_string(s : String) -> Bool {
   // Basic format check: YYYY-MM-DDTHH:MM:SS...
-  if s.length() < 19 { return false }
+  if s.length() < 19 {
+    return false
+  }
   // Check basic structure
   let chars = s.to_array().map(fn(c) { c.to_int() })
-  if chars.length() < 19 { return false }
+  if chars.length() < 19 {
+    return false
+  }
   // YYYY-MM-DDTHH:MM:SS
-  if chars[4] != 45 || chars[7] != 45 || chars[10] != 84 || chars[13] != 58 || chars[16] != 58 {
+  if chars[4] != 45 ||
+    chars[7] != 45 ||
+    chars[10] != 84 ||
+    chars[13] != 58 ||
+    chars[16] != 58 {
     return false
   }
   true
 }
 
+///|
 fn is_valid_date_string(s : String) -> Bool {
   // YYYY-MM-DD
-  if s.length() != 10 { return false }
+  if s.length() != 10 {
+    return false
+  }
   let chars = s.to_array().map(fn(c) { c.to_int() })
-  if chars[4] != 45 || chars[7] != 45 { return false }
+  if chars[4] != 45 || chars[7] != 45 {
+    return false
+  }
   true
 }
 
+///|
 fn is_valid_time_string(s : String) -> Bool {
   // HH:MM:SS or HH:MM:SS.fractional
-  if s.length() < 8 { return false }
+  if s.length() < 8 {
+    return false
+  }
   let chars = s.to_array().map(fn(c) { c.to_int() })
-  if chars[2] != 58 || chars[5] != 58 { return false }
+  if chars[2] != 58 || chars[5] != 58 {
+    return false
+  }
   true
 }
 
+///|
 /// Validate a parsed TOML string
 pub fn validate_source(source : String) -> ValidationResult {
   match parse(source) {
@@ -2419,15 +3225,20 @@ pub fn validate_source(source : String) -> ValidationResult {
   }
 }
 
+///|
 /// Check if a TomlValue contains only a single type (recursively)
 pub fn is_homogeneous(value : TomlValue) -> Bool {
   match value {
     TomlValue::Array(arr) => {
-      if arr.length() <= 1 { return true }
+      if arr.length() <= 1 {
+        return true
+      }
       let first_type = arr[0].type_name()
       let mut i = 1
       while i < arr.length() {
-        if arr[i].type_name() != first_type { return false }
+        if arr[i].type_name() != first_type {
+          return false
+        }
         i = i + 1
       }
       true
@@ -2436,7 +3247,9 @@ pub fn is_homogeneous(value : TomlValue) -> Bool {
       let entries = t.to_array()
       let mut j = 0
       while j < entries.length() {
-        if !is_homogeneous(entries[j].1) { return false }
+        if !is_homogeneous(entries[j].1) {
+          return false
+        }
         j = j + 1
       }
       true
@@ -2448,41 +3261,51 @@ pub fn is_homogeneous(value : TomlValue) -> Bool {
 // ============================================================
 // SECTION 8D: Merge Module
 // ============================================================
+
+///|
 /// Deep merge two TomlValues. Right side takes precedence on conflicts.
 pub fn merge(left : TomlValue, right : TomlValue) -> TomlValue {
   match left {
-    TomlValue::Table(lt) => {
+    TomlValue::Table(lt) =>
       match right {
         TomlValue::Table(rt) => merge_tables(lt, rt, false)
         TomlValue::InlineTable(rt) => merge_tables(lt, rt, false)
         _ => right
       }
-    }
-    TomlValue::InlineTable(lt) => {
+    TomlValue::InlineTable(lt) =>
       match right {
         TomlValue::Table(rt) => merge_tables(lt, rt, true)
         TomlValue::InlineTable(rt) => merge_tables(lt, rt, true)
         _ => right
       }
-    }
-    TomlValue::Array(la) => {
+    TomlValue::Array(la) =>
       match right {
         TomlValue::Array(ra) => {
           let result : Array[TomlValue] = []
           let mut i = 0
-          while i < la.length() { result.push(la[i]); i = i + 1 }
+          while i < la.length() {
+            result.push(la[i])
+            i = i + 1
+          }
           let mut j = 0
-          while j < ra.length() { result.push(ra[j]); j = j + 1 }
+          while j < ra.length() {
+            result.push(ra[j])
+            j = j + 1
+          }
           TomlValue::Array(result)
         }
         _ => right
       }
-    }
     _ => right
   }
 }
 
-fn merge_tables(left : Map[String, TomlValue], right : Map[String, TomlValue], inline : Bool) -> TomlValue {
+///|
+fn merge_tables(
+  left : Map[String, TomlValue],
+  right : Map[String, TomlValue],
+  inline : Bool,
+) -> TomlValue {
   let result : Map[String, TomlValue] = Map([])
   // Copy all left entries
   let l_entries = left.to_array()
@@ -2498,46 +3321,62 @@ fn merge_tables(left : Map[String, TomlValue], right : Map[String, TomlValue], i
     let key = r_entries[j].0
     let rval = r_entries[j].1
     match result.get(key) {
-      Some(lval) => {
-        result.set(key, merge(lval, rval))
-      }
-      None => {
-        result.set(key, rval)
-      }
+      Some(lval) => result.set(key, merge(lval, rval))
+      None => result.set(key, rval)
     }
     j = j + 1
   }
-  if inline { TomlValue::InlineTable(result) } else { TomlValue::Table(result) }
+  if inline {
+    TomlValue::InlineTable(result)
+  } else {
+    TomlValue::Table(result)
+  }
 }
 
+///|
 /// Merge with conflict detection - returns (merged, conflicts)
-pub fn merge_with_conflicts(left : TomlValue, right : TomlValue) -> (TomlValue, Array[String]) {
+pub fn merge_with_conflicts(
+  left : TomlValue,
+  right : TomlValue,
+) -> (TomlValue, Array[String]) {
   let conflicts : Array[String] = []
   let merged = merge_detect_conflicts(left, right, "", conflicts)
   (merged, conflicts)
 }
 
-fn merge_detect_conflicts(left : TomlValue, right : TomlValue, path : String, conflicts : Array[String]) -> TomlValue {
+///|
+fn merge_detect_conflicts(
+  left : TomlValue,
+  right : TomlValue,
+  path : String,
+  conflicts : Array[String],
+) -> TomlValue {
   match left {
-    TomlValue::Table(lt) => {
+    TomlValue::Table(lt) =>
       match right {
         TomlValue::Table(rt) => merge_tables_detect(lt, rt, path, conflicts)
-        TomlValue::InlineTable(rt) => merge_tables_detect(lt, rt, path, conflicts)
+        TomlValue::InlineTable(rt) =>
+          merge_tables_detect(lt, rt, path, conflicts)
         _ => right
       }
-    }
-    TomlValue::InlineTable(lt) => {
+    TomlValue::InlineTable(lt) =>
       match right {
         TomlValue::Table(rt) => merge_tables_detect(lt, rt, path, conflicts)
-        TomlValue::InlineTable(rt) => merge_tables_detect(lt, rt, path, conflicts)
+        TomlValue::InlineTable(rt) =>
+          merge_tables_detect(lt, rt, path, conflicts)
         _ => right
       }
-    }
     _ => right
   }
 }
 
-fn merge_tables_detect(left : Map[String, TomlValue], right : Map[String, TomlValue], path : String, conflicts : Array[String]) -> TomlValue {
+///|
+fn merge_tables_detect(
+  left : Map[String, TomlValue],
+  right : Map[String, TomlValue],
+  path : String,
+  conflicts : Array[String],
+) -> TomlValue {
   let result : Map[String, TomlValue] = Map([])
   let l_entries = left.to_array()
   let mut i = 0
@@ -2552,67 +3391,95 @@ fn merge_tables_detect(left : Map[String, TomlValue], right : Map[String, TomlVa
     let rval = r_entries[j].1
     let new_path = if path == "" { key } else { path + "." + key }
     match result.get(key) {
-      Some(lval) => {
+      Some(lval) =>
         match lval {
-          TomlValue::Table(_) => {
+          TomlValue::Table(_) =>
             match rval {
-              TomlValue::Table(_) | TomlValue::InlineTable(_) => {
-                result.set(key, merge_detect_conflicts(lval, rval, new_path, conflicts))
-              }
+              TomlValue::Table(_) | TomlValue::InlineTable(_) =>
+                result.set(
+                  key,
+                  merge_detect_conflicts(lval, rval, new_path, conflicts),
+                )
               _ => {
                 if lval.type_name() != rval.type_name() {
-                  conflicts.push("Type conflict at " + new_path + ": " + lval.type_name() + " vs " + rval.type_name())
+                  conflicts.push(
+                    "Type conflict at " +
+                    new_path +
+                    ": " +
+                    lval.type_name() +
+                    " vs " +
+                    rval.type_name(),
+                  )
                 }
                 result.set(key, rval)
               }
             }
-          }
-          TomlValue::InlineTable(_) => {
+          TomlValue::InlineTable(_) =>
             match rval {
-              TomlValue::Table(_) | TomlValue::InlineTable(_) => {
-                result.set(key, merge_detect_conflicts(lval, rval, new_path, conflicts))
-              }
+              TomlValue::Table(_) | TomlValue::InlineTable(_) =>
+                result.set(
+                  key,
+                  merge_detect_conflicts(lval, rval, new_path, conflicts),
+                )
               _ => {
                 if lval.type_name() != rval.type_name() {
-                  conflicts.push("Type conflict at " + new_path + ": " + lval.type_name() + " vs " + rval.type_name())
+                  conflicts.push(
+                    "Type conflict at " +
+                    new_path +
+                    ": " +
+                    lval.type_name() +
+                    " vs " +
+                    rval.type_name(),
+                  )
                 }
                 result.set(key, rval)
               }
             }
-          }
           _ => {
             if lval.type_name() != rval.type_name() {
-              conflicts.push("Type conflict at " + new_path + ": " + lval.type_name() + " vs " + rval.type_name())
+              conflicts.push(
+                "Type conflict at " +
+                new_path +
+                ": " +
+                lval.type_name() +
+                " vs " +
+                rval.type_name(),
+              )
             }
             result.set(key, rval)
           }
         }
-      }
-      None => { result.set(key, rval) }
+      None => result.set(key, rval)
     }
     j = j + 1
   }
   TomlValue::Table(result)
 }
 
+///|
 /// Shallow merge - only top-level keys, no recursion
 pub fn shallow_merge(left : TomlValue, right : TomlValue) -> TomlValue {
   match left {
-    TomlValue::Table(lt) => {
+    TomlValue::Table(lt) =>
       match right {
         TomlValue::Table(rt) => {
           let result : Map[String, TomlValue] = Map([])
           let l_entries = lt.to_array()
           let mut i = 0
-          while i < l_entries.length() { result.set(l_entries[i].0, l_entries[i].1); i = i + 1 }
+          while i < l_entries.length() {
+            result.set(l_entries[i].0, l_entries[i].1)
+            i = i + 1
+          }
           let r_entries = rt.to_array()
           let mut j = 0
-          while j < r_entries.length() { result.set(r_entries[j].0, r_entries[j].1); j = j + 1 }
+          while j < r_entries.length() {
+            result.set(r_entries[j].0, r_entries[j].1)
+            j = j + 1
+          }
           TomlValue::Table(result)
         }
         _ => right
       }
-    }
     _ => right
   }
 }
@@ -2620,28 +3487,36 @@ pub fn shallow_merge(left : TomlValue, right : TomlValue) -> TomlValue {
 // ============================================================
 // SECTION 8E: Diff Module
 // ============================================================
+
+///|
 /// Represents a difference between two TomlValues
 pub enum DiffKind {
   Added(TomlValue)
   Removed(TomlValue)
   Modified(TomlValue, TomlValue)
-  Unchanged
 }
 
+///|
+fn _planned_diff() -> Array[DiffKind] {
+  []
+}
+
+///|
 pub struct DiffEntry {
   path : String
   kind : DiffKind
 }
 
-pub impl Show for DiffEntry with to_string(self : DiffEntry) -> String {
+///|
+pub impl Show for DiffEntry with fn to_string(self : DiffEntry) -> String {
   match self.kind {
     DiffKind::Added(_) => "Added: " + self.path
     DiffKind::Removed(_) => "Removed: " + self.path
     DiffKind::Modified(_, _) => "Modified: " + self.path
-    DiffKind::Unchanged => "Unchanged: " + self.path
   }
 }
 
+///|
 /// Compute the diff between two TomlValues
 pub fn diff(old_val : TomlValue, new_val : TomlValue) -> Array[DiffEntry] {
   let result : Array[DiffEntry] = []
@@ -2649,51 +3524,68 @@ pub fn diff(old_val : TomlValue, new_val : TomlValue) -> Array[DiffEntry] {
   result
 }
 
-fn diff_recursive(old_val : TomlValue, new_val : TomlValue, path : String, result : Array[DiffEntry]) -> Unit {
+///|
+fn diff_recursive(
+  old_val : TomlValue,
+  new_val : TomlValue,
+  path : String,
+  result : Array[DiffEntry],
+) -> Unit {
   match old_val {
-    TomlValue::Table(ot) => {
+    TomlValue::Table(ot) =>
       match new_val {
         TomlValue::Table(nt) => diff_tables(ot, nt, path, result)
-        _ => {
+        _ =>
           if !deep_equal(old_val, new_val) {
-            let entry : DiffEntry = { path: path, kind: DiffKind::Modified(old_val, new_val) }
+            let entry : DiffEntry = {
+              path,
+              kind: DiffKind::Modified(old_val, new_val),
+            }
             result.push(entry)
           }
-        }
       }
-    }
-    TomlValue::InlineTable(ot) => {
+    TomlValue::InlineTable(ot) =>
       match new_val {
         TomlValue::InlineTable(nt) => diff_tables(ot, nt, path, result)
-        _ => {
+        _ =>
           if !deep_equal(old_val, new_val) {
-            let entry : DiffEntry = { path: path, kind: DiffKind::Modified(old_val, new_val) }
+            let entry : DiffEntry = {
+              path,
+              kind: DiffKind::Modified(old_val, new_val),
+            }
             result.push(entry)
           }
-        }
       }
-    }
-    TomlValue::Array(oa) => {
+    TomlValue::Array(oa) =>
       match new_val {
         TomlValue::Array(na) => diff_arrays(oa, na, path, result)
-        _ => {
+        _ =>
           if !deep_equal(old_val, new_val) {
-            let entry : DiffEntry = { path: path, kind: DiffKind::Modified(old_val, new_val) }
+            let entry : DiffEntry = {
+              path,
+              kind: DiffKind::Modified(old_val, new_val),
+            }
             result.push(entry)
           }
-        }
       }
-    }
-    _ => {
+    _ =>
       if !deep_equal(old_val, new_val) {
-        let entry : DiffEntry = { path: path, kind: DiffKind::Modified(old_val, new_val) }
+        let entry : DiffEntry = {
+          path,
+          kind: DiffKind::Modified(old_val, new_val),
+        }
         result.push(entry)
       }
-    }
   }
 }
 
-fn diff_tables(old_tbl : Map[String, TomlValue], new_tbl : Map[String, TomlValue], path : String, result : Array[DiffEntry]) -> Unit {
+///|
+fn diff_tables(
+  old_tbl : Map[String, TomlValue],
+  new_tbl : Map[String, TomlValue],
+  path : String,
+  result : Array[DiffEntry],
+) -> Unit {
   // Find removed and modified keys
   let o_entries = old_tbl.to_array()
   let mut i = 0
@@ -2702,9 +3594,12 @@ fn diff_tables(old_tbl : Map[String, TomlValue], new_tbl : Map[String, TomlValue
     let oval = o_entries[i].1
     let new_path = if path == "" { key } else { path + "." + key }
     match new_tbl.get(key) {
-      Some(nval) => { diff_recursive(oval, nval, new_path, result) }
+      Some(nval) => diff_recursive(oval, nval, new_path, result)
       None => {
-        let entry : DiffEntry = { path: new_path, kind: DiffKind::Removed(oval) }
+        let entry : DiffEntry = {
+          path: new_path,
+          kind: DiffKind::Removed(oval),
+        }
         result.push(entry)
       }
     }
@@ -2715,25 +3610,47 @@ fn diff_tables(old_tbl : Map[String, TomlValue], new_tbl : Map[String, TomlValue
   let mut j = 0
   while j < n_entries.length() {
     let key = n_entries[j].0
-    if (match old_tbl.get(key) { None => true; _ => false }) {
+    if (match old_tbl.get(key) {
+        None => true
+        _ => false
+      }) {
       let new_path = if path == "" { key } else { path + "." + key }
-      let entry : DiffEntry = { path: new_path, kind: DiffKind::Added(n_entries[j].1) }
+      let entry : DiffEntry = {
+        path: new_path,
+        kind: DiffKind::Added(n_entries[j].1),
+      }
       result.push(entry)
     }
     j = j + 1
   }
 }
 
-fn diff_arrays(old_arr : Array[TomlValue], new_arr : Array[TomlValue], path : String, result : Array[DiffEntry]) -> Unit {
-  let max_len = if old_arr.length() > new_arr.length() { old_arr.length() } else { new_arr.length() }
+///|
+fn diff_arrays(
+  old_arr : Array[TomlValue],
+  new_arr : Array[TomlValue],
+  path : String,
+  result : Array[DiffEntry],
+) -> Unit {
+  let max_len = if old_arr.length() > new_arr.length() {
+    old_arr.length()
+  } else {
+    new_arr.length()
+  }
   let mut i = 0
   while i < max_len {
     let item_path = path + "[" + i.to_string() + "]"
     if i >= old_arr.length() {
-      let entry : DiffEntry = { path: item_path, kind: DiffKind::Added(new_arr[i]) }
+      let entry : DiffEntry = {
+        path: item_path,
+        kind: DiffKind::Added(new_arr[i]),
+      }
       result.push(entry)
     } else if i >= new_arr.length() {
-      let entry : DiffEntry = { path: item_path, kind: DiffKind::Removed(old_arr[i]) }
+      let entry : DiffEntry = {
+        path: item_path,
+        kind: DiffKind::Removed(old_arr[i]),
+      }
       result.push(entry)
     } else {
       diff_recursive(old_arr[i], new_arr[i], item_path, result)
@@ -2742,41 +3659,81 @@ fn diff_arrays(old_arr : Array[TomlValue], new_arr : Array[TomlValue], path : St
   }
 }
 
+///|
 /// Check if two values are deeply equal
 pub fn deep_equal(a : TomlValue, b : TomlValue) -> Bool {
-  if a.type_name() != b.type_name() { return false }
+  if a.type_name() != b.type_name() {
+    return false
+  }
   match a {
-    TomlValue::Str(x) => { match b { TomlValue::Str(y) => x == y; _ => false } }
-    TomlValue::Int(x) => { match b { TomlValue::Int(y) => x == y; _ => false } }
-    TomlValue::Float(x) => { match b { TomlValue::Float(y) => x == y; _ => false } }
-    TomlValue::Bool(x) => { match b { TomlValue::Bool(y) => x == y; _ => false } }
-    TomlValue::OffsetDateTime(x) => { match b { TomlValue::OffsetDateTime(y) => x.datetime == y.datetime; _ => false } }
-    TomlValue::LocalDateTime(x) => { match b { TomlValue::LocalDateTime(y) => x.datetime == y.datetime; _ => false } }
-    TomlValue::LocalDate(x) => { match b { TomlValue::LocalDate(y) => x.date == y.date; _ => false } }
-    TomlValue::LocalTime(x) => { match b { TomlValue::LocalTime(y) => x.time == y.time; _ => false } }
-    TomlValue::Array(x) => {
+    TomlValue::Str(x) =>
+      match b {
+        TomlValue::Str(y) => x == y
+        _ => false
+      }
+    TomlValue::Int(x) =>
+      match b {
+        TomlValue::Int(y) => x == y
+        _ => false
+      }
+    TomlValue::Float(x) =>
+      match b {
+        TomlValue::Float(y) => x == y
+        _ => false
+      }
+    TomlValue::Bool(x) =>
+      match b {
+        TomlValue::Bool(y) => x == y
+        _ => false
+      }
+    TomlValue::OffsetDateTime(x) =>
+      match b {
+        TomlValue::OffsetDateTime(y) => x.datetime == y.datetime
+        _ => false
+      }
+    TomlValue::LocalDateTime(x) =>
+      match b {
+        TomlValue::LocalDateTime(y) => x.datetime == y.datetime
+        _ => false
+      }
+    TomlValue::LocalDate(x) =>
+      match b {
+        TomlValue::LocalDate(y) => x.date == y.date
+        _ => false
+      }
+    TomlValue::LocalTime(x) =>
+      match b {
+        TomlValue::LocalTime(y) => x.time == y.time
+        _ => false
+      }
+    TomlValue::Array(x) =>
       match b {
         TomlValue::Array(y) => {
-          if x.length() != y.length() { return false }
+          if x.length() != y.length() {
+            return false
+          }
           let mut i = 0
           while i < x.length() {
-            if !deep_equal(x[i], y[i]) { return false }
+            if !deep_equal(x[i], y[i]) {
+              return false
+            }
             i = i + 1
           }
           true
         }
         _ => false
       }
-    }
-    TomlValue::Table(x) => {
+    TomlValue::Table(x) =>
       match b {
         TomlValue::Table(y) => {
-          if x.length() != y.length() { return false }
+          if x.length() != y.length() {
+            return false
+          }
           let x_entries = x.to_array()
           let mut i = 0
           while i < x_entries.length() {
             match y.get(x_entries[i].0) {
-              Some(yv) => { if !deep_equal(x_entries[i].1, yv) { return false } }
+              Some(yv) => if !deep_equal(x_entries[i].1, yv) { return false }
               None => return false
             }
             i = i + 1
@@ -2785,16 +3742,17 @@ pub fn deep_equal(a : TomlValue, b : TomlValue) -> Bool {
         }
         _ => false
       }
-    }
-    TomlValue::InlineTable(x) => {
+    TomlValue::InlineTable(x) =>
       match b {
         TomlValue::InlineTable(y) => {
-          if x.length() != y.length() { return false }
+          if x.length() != y.length() {
+            return false
+          }
           let x_entries = x.to_array()
           let mut i = 0
           while i < x_entries.length() {
             match y.get(x_entries[i].0) {
-              Some(yv) => { if !deep_equal(x_entries[i].1, yv) { return false } }
+              Some(yv) => if !deep_equal(x_entries[i].1, yv) { return false }
               None => return false
             }
             i = i + 1
@@ -2803,13 +3761,14 @@ pub fn deep_equal(a : TomlValue, b : TomlValue) -> Bool {
         }
         _ => false
       }
-    }
   }
 }
 
 // ============================================================
 // SECTION 8F: Statistics Module
 // ============================================================
+
+///|
 /// Statistics about a TOML document
 pub struct TomlStats {
   total_keys : Int
@@ -2825,53 +3784,101 @@ pub struct TomlStats {
   max_array_length : Int
 }
 
+///|
 /// Compute statistics for a TomlValue
 pub fn compute_stats(value : TomlValue) -> TomlStats {
   stats_recursive(value, 0)
 }
 
+///|
 fn stats_recursive(value : TomlValue, depth : Int) -> TomlStats {
   match value {
-    TomlValue::Str(_) => {
+    TomlValue::Str(_) =>
       {
-        total_keys: 1, total_strings: 1, total_ints: 0, total_floats: 0,
-        total_bools: 0, total_arrays: 0, total_tables: 0, total_inline_tables: 0,
-        total_datetimes: 0, max_depth: depth, max_array_length: 0
+        total_keys: 1,
+        total_strings: 1,
+        total_ints: 0,
+        total_floats: 0,
+        total_bools: 0,
+        total_arrays: 0,
+        total_tables: 0,
+        total_inline_tables: 0,
+        total_datetimes: 0,
+        max_depth: depth,
+        max_array_length: 0,
       }
-    }
-    TomlValue::Int(_) => {
+    TomlValue::Int(_) =>
       {
-        total_keys: 1, total_strings: 0, total_ints: 1, total_floats: 0,
-        total_bools: 0, total_arrays: 0, total_tables: 0, total_inline_tables: 0,
-        total_datetimes: 0, max_depth: depth, max_array_length: 0
+        total_keys: 1,
+        total_strings: 0,
+        total_ints: 1,
+        total_floats: 0,
+        total_bools: 0,
+        total_arrays: 0,
+        total_tables: 0,
+        total_inline_tables: 0,
+        total_datetimes: 0,
+        max_depth: depth,
+        max_array_length: 0,
       }
-    }
-    TomlValue::Float(_) => {
+    TomlValue::Float(_) =>
       {
-        total_keys: 1, total_strings: 0, total_ints: 0, total_floats: 1,
-        total_bools: 0, total_arrays: 0, total_tables: 0, total_inline_tables: 0,
-        total_datetimes: 0, max_depth: depth, max_array_length: 0
+        total_keys: 1,
+        total_strings: 0,
+        total_ints: 0,
+        total_floats: 1,
+        total_bools: 0,
+        total_arrays: 0,
+        total_tables: 0,
+        total_inline_tables: 0,
+        total_datetimes: 0,
+        max_depth: depth,
+        max_array_length: 0,
       }
-    }
-    TomlValue::Bool(_) => {
+    TomlValue::Bool(_) =>
       {
-        total_keys: 1, total_strings: 0, total_ints: 0, total_floats: 0,
-        total_bools: 1, total_arrays: 0, total_tables: 0, total_inline_tables: 0,
-        total_datetimes: 0, max_depth: depth, max_array_length: 0
+        total_keys: 1,
+        total_strings: 0,
+        total_ints: 0,
+        total_floats: 0,
+        total_bools: 1,
+        total_arrays: 0,
+        total_tables: 0,
+        total_inline_tables: 0,
+        total_datetimes: 0,
+        max_depth: depth,
+        max_array_length: 0,
       }
-    }
-    TomlValue::OffsetDateTime(_) | TomlValue::LocalDateTime(_) | TomlValue::LocalDate(_) | TomlValue::LocalTime(_) => {
+    TomlValue::OffsetDateTime(_)
+    | TomlValue::LocalDateTime(_)
+    | TomlValue::LocalDate(_)
+    | TomlValue::LocalTime(_) =>
       {
-        total_keys: 1, total_strings: 0, total_ints: 0, total_floats: 0,
-        total_bools: 0, total_arrays: 0, total_tables: 0, total_inline_tables: 0,
-        total_datetimes: 1, max_depth: depth, max_array_length: 0
+        total_keys: 1,
+        total_strings: 0,
+        total_ints: 0,
+        total_floats: 0,
+        total_bools: 0,
+        total_arrays: 0,
+        total_tables: 0,
+        total_inline_tables: 0,
+        total_datetimes: 1,
+        max_depth: depth,
+        max_array_length: 0,
       }
-    }
     TomlValue::Array(arr) => {
       let mut s : TomlStats = {
-        total_keys: 1, total_strings: 0, total_ints: 0, total_floats: 0,
-        total_bools: 0, total_arrays: 1, total_tables: 0, total_inline_tables: 0,
-        total_datetimes: 0, max_depth: depth, max_array_length: arr.length()
+        total_keys: 1,
+        total_strings: 0,
+        total_ints: 0,
+        total_floats: 0,
+        total_bools: 0,
+        total_arrays: 1,
+        total_tables: 0,
+        total_inline_tables: 0,
+        total_datetimes: 0,
+        max_depth: depth,
+        max_array_length: arr.length(),
       }
       let mut i = 0
       while i < arr.length() {
@@ -2883,9 +3890,17 @@ fn stats_recursive(value : TomlValue, depth : Int) -> TomlStats {
     }
     TomlValue::Table(t) => {
       let mut s : TomlStats = {
-        total_keys: t.length(), total_strings: 0, total_ints: 0, total_floats: 0,
-        total_bools: 0, total_arrays: 0, total_tables: 1, total_inline_tables: 0,
-        total_datetimes: 0, max_depth: depth, max_array_length: 0
+        total_keys: t.length(),
+        total_strings: 0,
+        total_ints: 0,
+        total_floats: 0,
+        total_bools: 0,
+        total_arrays: 0,
+        total_tables: 1,
+        total_inline_tables: 0,
+        total_datetimes: 0,
+        max_depth: depth,
+        max_array_length: 0,
       }
       let entries = t.to_array()
       let mut j = 0
@@ -2898,9 +3913,17 @@ fn stats_recursive(value : TomlValue, depth : Int) -> TomlStats {
     }
     TomlValue::InlineTable(t) => {
       let mut s : TomlStats = {
-        total_keys: t.length(), total_strings: 0, total_ints: 0, total_floats: 0,
-        total_bools: 0, total_arrays: 0, total_tables: 0, total_inline_tables: 1,
-        total_datetimes: 0, max_depth: depth, max_array_length: 0
+        total_keys: t.length(),
+        total_strings: 0,
+        total_ints: 0,
+        total_floats: 0,
+        total_bools: 0,
+        total_arrays: 0,
+        total_tables: 0,
+        total_inline_tables: 1,
+        total_datetimes: 0,
+        max_depth: depth,
+        max_array_length: 0,
       }
       let entries = t.to_array()
       let mut k = 0
@@ -2914,6 +3937,7 @@ fn stats_recursive(value : TomlValue, depth : Int) -> TomlStats {
   }
 }
 
+///|
 fn merge_stats(a : TomlStats, b : TomlStats) -> TomlStats {
   {
     total_keys: a.total_keys + b.total_keys,
@@ -2925,12 +3949,21 @@ fn merge_stats(a : TomlStats, b : TomlStats) -> TomlStats {
     total_tables: a.total_tables + b.total_tables,
     total_inline_tables: a.total_inline_tables + b.total_inline_tables,
     total_datetimes: a.total_datetimes + b.total_datetimes,
-    max_depth: if a.max_depth > b.max_depth { a.max_depth } else { b.max_depth },
-    max_array_length: if a.max_array_length > b.max_array_length { a.max_array_length } else { b.max_array_length }
+    max_depth: if a.max_depth > b.max_depth {
+      a.max_depth
+    } else {
+      b.max_depth
+    },
+    max_array_length: if a.max_array_length > b.max_array_length {
+      a.max_array_length
+    } else {
+      b.max_array_length
+    },
   }
 }
 
-pub impl Show for TomlStats with to_string(self : TomlStats) -> String {
+///|
+pub impl Show for TomlStats with fn to_string(self : TomlStats) -> String {
   let s = "TOML Stats:"
   let s = s + "\n  Keys: " + self.total_keys.to_string()
   let s = s + "\n  Strings: " + self.total_strings.to_string()
@@ -2949,23 +3982,39 @@ pub impl Show for TomlStats with to_string(self : TomlStats) -> String {
 // ============================================================
 // SECTION 8G: Pretty Print and Serialization Options
 // ============================================================
+
+///|
 /// Serialize with pretty printing (multi-line for arrays/tables)
 pub fn serialize_pretty(value : TomlValue) -> String {
   serialize_with_options(value, true, false, 2)
 }
 
+///|
 /// Serialize with sorted keys
 pub fn serialize_sorted(value : TomlValue) -> String {
   serialize_with_options(value, false, true, 0)
 }
 
+///|
 /// Serialize with custom options
-pub fn serialize_with_options(value : TomlValue, pretty : Bool, sorted : Bool, indent_size : Int) -> String {
+pub fn serialize_with_options(
+  value : TomlValue,
+  pretty : Bool,
+  sorted : Bool,
+  indent_size : Int,
+) -> String {
   ser_value_opts(value, 0, pretty, sorted, indent_size)
 }
 
-fn ser_value_opts(value : TomlValue, depth : Int, pretty : Bool, sorted : Bool, indent : Int) -> String {
-  let pad = String::make(depth * indent, Int::unsafe_to_char(32))
+///|
+fn ser_value_opts(
+  value : TomlValue,
+  depth : Int,
+  pretty : Bool,
+  sorted : Bool,
+  indent : Int,
+) -> String {
+  let _pad = String::make(depth * indent, Int::unsafe_to_char(32))
   match value {
     TomlValue::Str(s) => ser_string(s)
     TomlValue::Int(i) => i.to_string()
@@ -2977,19 +4026,31 @@ fn ser_value_opts(value : TomlValue, depth : Int, pretty : Bool, sorted : Bool, 
     TomlValue::LocalTime(t) => t.time
     TomlValue::Array(arr) => ser_array_opts(arr, depth, pretty, sorted, indent)
     TomlValue::Table(t) => ser_table_opts(t, depth, pretty, sorted, indent)
-    TomlValue::InlineTable(t) => ser_inline_table_opts(t, pretty, sorted, indent)
+    TomlValue::InlineTable(t) =>
+      ser_inline_table_opts(t, pretty, sorted, indent)
   }
 }
 
-fn ser_array_opts(arr : Array[TomlValue], depth : Int, pretty : Bool, sorted : Bool, indent : Int) -> String {
-  if arr.length() == 0 { return "[]" }
+///|
+fn ser_array_opts(
+  arr : Array[TomlValue],
+  depth : Int,
+  pretty : Bool,
+  sorted : Bool,
+  indent : Int,
+) -> String {
+  if arr.length() == 0 {
+    return "[]"
+  }
   if pretty {
     let pad1 = String::make((depth + 1) * indent, Int::unsafe_to_char(32))
     let pad0 = String::make(depth * indent, Int::unsafe_to_char(32))
     let mut r = "[\n"
     let mut i = 0
     while i < arr.length() {
-      if i > 0 { r = r + ",\n" }
+      if i > 0 {
+        r = r + ",\n"
+      }
       r = r + pad1 + ser_value_opts(arr[i], depth + 1, pretty, sorted, indent)
       i = i + 1
     }
@@ -2998,7 +4059,9 @@ fn ser_array_opts(arr : Array[TomlValue], depth : Int, pretty : Bool, sorted : B
     let mut r = "["
     let mut i = 0
     while i < arr.length() {
-      if i > 0 { r = r + ", " }
+      if i > 0 {
+        r = r + ", "
+      }
       r = r + ser_value_opts(arr[i], depth, pretty, sorted, indent)
       i = i + 1
     }
@@ -3009,7 +4072,9 @@ fn ser_array_opts(arr : Array[TomlValue], depth : Int, pretty : Bool, sorted : B
     let mut r = "[\n"
     let mut i = 0
     while i < arr.length() {
-      if i > 0 { r = r + ",\n" }
+      if i > 0 {
+        r = r + ",\n"
+      }
       r = r + pad1 + ser_value_opts(arr[i], depth + 1, pretty, sorted, indent)
       i = i + 1
     }
@@ -3017,34 +4082,64 @@ fn ser_array_opts(arr : Array[TomlValue], depth : Int, pretty : Bool, sorted : B
   }
 }
 
-fn ser_table_opts(table : Map[String, TomlValue], depth : Int, pretty : Bool, sorted : Bool, indent : Int) -> String {
-  if table.length() == 0 { return "{}" }
+///|
+fn ser_table_opts(
+  table : Map[String, TomlValue],
+  depth : Int,
+  pretty : Bool,
+  sorted : Bool,
+  indent : Int,
+) -> String {
+  if table.length() == 0 {
+    return "{}"
+  }
   let pad = String::make(depth * indent, Int::unsafe_to_char(32))
   let entries = table.to_array()
   let mut r = ""
   let mut i = 0
   while i < entries.length() {
-    if i > 0 { r = r + "\n" }
+    if i > 0 {
+      r = r + "\n"
+    }
     match entries[i].1 {
-      TomlValue::Table(_) | TomlValue::Array(_) => { let _ = 0 }
-      _ => {
-        r = r + pad + ser_key(entries[i].0) + " = " + ser_value_opts(entries[i].1, depth + 1, pretty, sorted, indent)
+      TomlValue::Table(_) | TomlValue::Array(_) => {
+        let _ = 0
       }
+      _ =>
+        r = r +
+          pad +
+          ser_key(entries[i].0) +
+          " = " +
+          ser_value_opts(entries[i].1, depth + 1, pretty, sorted, indent)
     }
     i = i + 1
   }
   r
 }
 
-fn ser_inline_table_opts(table : Map[String, TomlValue], pretty : Bool, sorted : Bool, indent : Int) -> String {
-  if table.length() == 0 { return "{}" }
+///|
+fn ser_inline_table_opts(
+  table : Map[String, TomlValue],
+  pretty : Bool,
+  sorted : Bool,
+  indent : Int,
+) -> String {
+  if table.length() == 0 {
+    return "{}"
+  }
   let entries = table.to_array()
   if pretty {
     let mut r = "{\n"
     let mut i = 0
     while i < entries.length() {
-      if i > 0 { r = r + ",\n" }
-      r = r + "  " + ser_key(entries[i].0) + " = " + ser_value_opts(entries[i].1, 1, pretty, sorted, indent)
+      if i > 0 {
+        r = r + ",\n"
+      }
+      r = r +
+        "  " +
+        ser_key(entries[i].0) +
+        " = " +
+        ser_value_opts(entries[i].1, 1, pretty, sorted, indent)
       i = i + 1
     }
     return r + "\n}"
@@ -3052,18 +4147,25 @@ fn ser_inline_table_opts(table : Map[String, TomlValue], pretty : Bool, sorted :
   let mut r = "{ "
   let mut i = 0
   while i < entries.length() {
-    if i > 0 { r = r + ", " }
-    r = r + ser_key(entries[i].0) + " = " + ser_value_opts(entries[i].1, 0, pretty, sorted, indent)
+    if i > 0 {
+      r = r + ", "
+    }
+    r = r +
+      ser_key(entries[i].0) +
+      " = " +
+      ser_value_opts(entries[i].1, 0, pretty, sorted, indent)
     i = i + 1
   }
   return r + " }"
 }
 
+///|
 /// Serialize to compact format (no unnecessary whitespace)
 pub fn serialize_compact(value : TomlValue) -> String {
   serialize_with_options(value, false, false, 0)
 }
 
+///|
 /// Convert TomlValue to JSON-like string for debugging
 pub fn to_json_like(value : TomlValue) -> String {
   let dq = String::make(1, Int::unsafe_to_char(34))
@@ -3080,7 +4182,9 @@ pub fn to_json_like(value : TomlValue) -> String {
       let mut r = "["
       let mut i = 0
       while i < arr.length() {
-        if i > 0 { r = r + ", " }
+        if i > 0 {
+          r = r + ", "
+        }
         r = r + to_json_like(arr[i])
         i = i + 1
       }
@@ -3091,7 +4195,9 @@ pub fn to_json_like(value : TomlValue) -> String {
       let mut r = "{"
       let mut i = 0
       while i < entries.length() {
-        if i > 0 { r = r + ", " }
+        if i > 0 {
+          r = r + ", "
+        }
         r = r + dq + entries[i].0 + dq + ": " + to_json_like(entries[i].1)
         i = i + 1
       }
@@ -3100,20 +4206,30 @@ pub fn to_json_like(value : TomlValue) -> String {
   }
 }
 
+///|
 /// Flatten a TomlValue to a map of dotted paths to values
 pub fn flatten(value : TomlValue) -> Map[String, TomlValue] {
   let result : Map[String, TomlValue] = Map([])
   flatten_recursive(value, "", result)
 }
 
-fn flatten_recursive(value : TomlValue, prefix : String, result : Map[String, TomlValue]) -> Map[String, TomlValue] {
+///|
+fn flatten_recursive(
+  value : TomlValue,
+  prefix : String,
+  result : Map[String, TomlValue],
+) -> Map[String, TomlValue] {
   match value {
     TomlValue::Table(t) | TomlValue::InlineTable(t) => {
       let entries = t.to_array()
       let mut r = result
       let mut i = 0
       while i < entries.length() {
-        let fp = if prefix == "" { entries[i].0 } else { prefix + "." + entries[i].0 }
+        let fp = if prefix == "" {
+          entries[i].0
+        } else {
+          prefix + "." + entries[i].0
+        }
         r = flatten_recursive(entries[i].1, fp, r)
         i = i + 1
       }
@@ -3129,29 +4245,34 @@ fn flatten_recursive(value : TomlValue, prefix : String, result : Map[String, To
       }
       r
     }
-    _ => {
+    _ =>
       if prefix.length() > 0 {
         result.set(prefix, value)
         result
-      } else { result }
-    }
+      } else {
+        result
+      }
   }
 }
 
 // ============================================================
 // SECTION 8H: Path Expression Module
 // ============================================================
+
+///|
 /// Represents a component in a TOML path
 pub enum PathSegment {
   Key(String)
   Index(Int)
 }
 
+///|
 /// A path to a value in a TOML document
 pub struct TomlPath {
   segments : Array[PathSegment]
 }
 
+///|
 fn parse_int(s : String) -> Int {
   let mut res = 0
   let chars = s.to_array()
@@ -3166,9 +4287,14 @@ fn parse_int(s : String) -> Int {
     }
     i = i + 1
   }
-  if is_neg { -res } else { res }
+  if is_neg {
+    -res
+  } else {
+    res
+  }
 }
 
+///|
 /// Parse a dotted path string into a TomlPath (e.g., "server.host")
 pub fn parse_path(path_str : String) -> TomlPath {
   let segs : Array[PathSegment] = []
@@ -3181,67 +4307,79 @@ pub fn parse_path(path_str : String) -> TomlPath {
     let has_bracket = part.find("[")
     match has_bracket {
       Some(idx) => {
-        let key_part = part.substring(end=idx)
-        if key_part.length() > 0 { segs.push(PathSegment::Key(key_part)) }
-        let bracket_content = part.substring(start=idx + 1, end=part.length() - 1)
+        let key_part = part[:idx].to_owned()
+        if key_part.length() > 0 {
+          segs.push(PathSegment::Key(key_part))
+        }
+        let bracket_content = part[idx + 1:part.length() - 1].to_owned()
         segs.push(PathSegment::Index(parse_int(bracket_content)))
       }
-      None => {
-        segs.push(PathSegment::Key(part))
-      }
+      None => segs.push(PathSegment::Key(part))
     }
     i = i + 1
   }
   { segments: segs }
 }
 
+///|
 /// Resolve a TomlPath to a TomlValue?
 pub fn resolve_path(root : TomlValue, path : TomlPath) -> TomlValue? {
   let mut current = root
   let mut i = 0
   while i < path.segments.length() {
     match path.segments[i] {
-      PathSegment::Key(k) => {
+      PathSegment::Key(k) =>
         match current {
-          TomlValue::Table(t) | TomlValue::InlineTable(t) => {
+          TomlValue::Table(t) | TomlValue::InlineTable(t) =>
             match t.get(k) {
               Some(v) => current = v
               None => return None
             }
-          }
           _ => return None
         }
-      }
-      PathSegment::Index(idx) => {
+      PathSegment::Index(idx) =>
         match current {
-          TomlValue::Array(arr) => {
+          TomlValue::Array(arr) =>
             if idx >= 0 && idx < arr.length() {
               current = arr[idx]
             } else {
               return None
             }
-          }
           _ => return None
         }
-      }
     }
     i = i + 1
   }
   Some(current)
 }
 
+///|
 /// Set a value at a path, returning a new TomlValue with the modification
-pub fn set_path(root : TomlValue, path : TomlPath, new_val : TomlValue) -> TomlValue? {
-  if path.segments.length() == 0 { return Some(new_val) }
+pub fn set_path(
+  root : TomlValue,
+  path : TomlPath,
+  new_val : TomlValue,
+) -> TomlValue? {
+  if path.segments.length() == 0 {
+    return Some(new_val)
+  }
   set_path_recursive(root, path.segments, 0, new_val)
 }
 
-fn set_path_recursive(current : TomlValue, segments : Array[PathSegment], depth : Int, new_val : TomlValue) -> TomlValue? {
-  if depth >= segments.length() { return Some(new_val) }
+///|
+fn set_path_recursive(
+  current : TomlValue,
+  segments : Array[PathSegment],
+  depth : Int,
+  new_val : TomlValue,
+) -> TomlValue? {
+  if depth >= segments.length() {
+    return Some(new_val)
+  }
   let seg = segments[depth]
 
   match seg {
-    PathSegment::Key(k) => {
+    PathSegment::Key(k) =>
       match current {
         TomlValue::Table(t) => {
           let new_t : Map[String, TomlValue] = Map([])
@@ -3261,63 +4399,77 @@ fn set_path_recursive(current : TomlValue, segments : Array[PathSegment], depth 
             i = i + 1
           }
           // Handle insertion if key not found
-          if (match t.get(k) { None => true; _ => false }) {
-             if depth == segments.length() - 1 {
-               new_t.set(k, new_val)
-             } else {
-               // Need to create intermediate table
-               let sub_t : Map[String, TomlValue] = Map([])
-               let sub_v = set_path_recursive(TomlValue::Table(sub_t), segments, depth + 1, new_val)
-               match sub_v {
-                 Some(v) => new_t.set(k, v)
-                 None => return None
-               }
-             }
+          if (match t.get(k) {
+              None => true
+              _ => false
+            }) {
+            if depth == segments.length() - 1 {
+              new_t.set(k, new_val)
+            } else {
+              // Need to create intermediate table
+              let sub_t : Map[String, TomlValue] = Map([])
+              let sub_v = set_path_recursive(
+                TomlValue::Table(sub_t),
+                segments,
+                depth + 1,
+                new_val,
+              )
+              match sub_v {
+                Some(v) => new_t.set(k, v)
+                None => return None
+              }
+            }
           }
           Some(TomlValue::Table(new_t))
         }
-        TomlValue::InlineTable(t) => {
-           match t.get(k) {
-             Some(existing) => {
-               match set_path_recursive(existing, segments, depth + 1, new_val) {
-                 Some(updated) => {
-                   let new_t : Map[String, TomlValue] = Map([])
-                   let entries = t.to_array()
-                   let mut i = 0
-                   while i < entries.length() { new_t.set(entries[i].0, entries[i].1); i = i + 1 }
-                   new_t.set(k, updated)
-                   Some(TomlValue::InlineTable(new_t))
-                 }
-                 None => None
-               }
-             }
-             None => {
-               if depth == segments.length() - 1 {
-                 let new_t : Map[String, TomlValue] = Map([])
-                 let entries = t.to_array()
-                 let mut i = 0
-                 while i < entries.length() { new_t.set(entries[i].0, entries[i].1); i = i + 1 }
-                 new_t.set(k, new_val)
-                 Some(TomlValue::InlineTable(new_t))
-               } else {
-                 None
-               }
-             }
-           }
-        }
+        TomlValue::InlineTable(t) =>
+          match t.get(k) {
+            Some(existing) =>
+              match set_path_recursive(existing, segments, depth + 1, new_val) {
+                Some(updated) => {
+                  let new_t : Map[String, TomlValue] = Map([])
+                  let entries = t.to_array()
+                  let mut i = 0
+                  while i < entries.length() {
+                    new_t.set(entries[i].0, entries[i].1)
+                    i = i + 1
+                  }
+                  new_t.set(k, updated)
+                  Some(TomlValue::InlineTable(new_t))
+                }
+                None => None
+              }
+            None =>
+              if depth == segments.length() - 1 {
+                let new_t : Map[String, TomlValue] = Map([])
+                let entries = t.to_array()
+                let mut i = 0
+                while i < entries.length() {
+                  new_t.set(entries[i].0, entries[i].1)
+                  i = i + 1
+                }
+                new_t.set(k, new_val)
+                Some(TomlValue::InlineTable(new_t))
+              } else {
+                None
+              }
+          }
         _ => None
       }
-    }
-    PathSegment::Index(idx) => {
+    PathSegment::Index(idx) =>
       match current {
-        TomlValue::Array(arr) => {
+        TomlValue::Array(arr) =>
           if idx >= 0 && idx < arr.length() {
             match set_path_recursive(arr[idx], segments, depth + 1, new_val) {
               Some(updated) => {
                 let new_arr : Array[TomlValue] = []
                 let mut j = 0
                 while j < arr.length() {
-                  if j == idx { new_arr.push(updated) } else { new_arr.push(arr[j]) }
+                  if j == idx {
+                    new_arr.push(updated)
+                  } else {
+                    new_arr.push(arr[j])
+                  }
                   j = j + 1
                 }
                 Some(TomlValue::Array(new_arr))
@@ -3327,16 +4479,16 @@ fn set_path_recursive(current : TomlValue, segments : Array[PathSegment], depth 
           } else {
             None
           }
-        }
         _ => None
       }
-    }
   }
 }
 
 // ============================================================
 // SECTION 8I: Transformation Module
 // ============================================================
+
+///|
 /// Map a function over all leaf values in the TOML tree
 pub fn map_leaves(value : TomlValue, f : (TomlValue) -> TomlValue) -> TomlValue {
   match value {
@@ -3373,6 +4525,7 @@ pub fn map_leaves(value : TomlValue, f : (TomlValue) -> TomlValue) -> TomlValue 
   }
 }
 
+///|
 /// Filter keys in tables based on a predicate
 pub fn filter_keys(value : TomlValue, pred : (String) -> Bool) -> TomlValue {
   match value {
@@ -3415,6 +4568,7 @@ pub fn filter_keys(value : TomlValue, pred : (String) -> Bool) -> TomlValue {
   }
 }
 
+///|
 /// Remove empty tables and arrays recursively
 pub fn prune_empty(value : TomlValue) -> TomlValue {
   match value {
@@ -3425,7 +4579,10 @@ pub fn prune_empty(value : TomlValue) -> TomlValue {
         let pruned = prune_empty(arr[i])
         match pruned {
           TomlValue::Array(a) => if a.length() > 0 { result.push(pruned) }
-          TomlValue::Table(t) | TomlValue::InlineTable(t) => if t.length() > 0 { result.push(pruned) }
+          TomlValue::Table(t) | TomlValue::InlineTable(t) =>
+            if t.length() > 0 {
+              result.push(pruned)
+            }
           _ => result.push(pruned)
         }
         i = i + 1
@@ -3443,7 +4600,9 @@ pub fn prune_empty(value : TomlValue) -> TomlValue {
           TomlValue::Table(t2) | TomlValue::InlineTable(t2) => t2.length() > 0
           _ => true
         }
-        if keep { result.set(entries[j].0, pruned) }
+        if keep {
+          result.set(entries[j].0, pruned)
+        }
         j = j + 1
       }
       TomlValue::Table(result)
@@ -3459,7 +4618,9 @@ pub fn prune_empty(value : TomlValue) -> TomlValue {
           TomlValue::Table(t2) | TomlValue::InlineTable(t2) => t2.length() > 0
           _ => true
         }
-        if keep { result.set(entries[k].0, pruned) }
+        if keep {
+          result.set(entries[k].0, pruned)
+        }
         k = k + 1
       }
       TomlValue::InlineTable(result)
@@ -3468,16 +4629,23 @@ pub fn prune_empty(value : TomlValue) -> TomlValue {
   }
 }
 
+///|
 /// Recursively transform tree nodes based on a visitor function
-pub fn transform_tree(value : TomlValue, visitor : (TomlValue) -> TomlValue?) -> TomlValue {
+pub fn transform_tree(
+  value : TomlValue,
+  visitor : (TomlValue) -> TomlValue?,
+) -> TomlValue {
   match visitor(value) {
     Some(transformed) => transformed
-    None => {
+    None =>
       match value {
         TomlValue::Array(arr) => {
           let result : Array[TomlValue] = []
           let mut i = 0
-          while i < arr.length() { result.push(transform_tree(arr[i], visitor)); i = i + 1 }
+          while i < arr.length() {
+            result.push(transform_tree(arr[i], visitor))
+            i = i + 1
+          }
           TomlValue::Array(result)
         }
         TomlValue::Table(t) => {
@@ -3502,13 +4670,14 @@ pub fn transform_tree(value : TomlValue, visitor : (TomlValue) -> TomlValue?) ->
         }
         _ => value
       }
-    }
   }
 }
 
 // ============================================================
 // SECTION 8J: Visualization and Extended Serialization
 // ============================================================
+
+///|
 /// Convert TOML to a DOT graph (Graphviz) string
 pub fn to_dot(value : TomlValue, root_name : String) -> String {
   let result : Array[String] = []
@@ -3526,29 +4695,53 @@ pub fn to_dot(value : TomlValue, root_name : String) -> String {
   r
 }
 
-fn dot_recursive(value : TomlValue, name : String, result : Array[String], depth : Int) -> Unit {
+///|
+fn dot_recursive(
+  value : TomlValue,
+  name : String,
+  result : Array[String],
+  depth : Int,
+) -> Unit {
   let indent = String::make(depth * 2, Int::unsafe_to_char(32))
   let node_id = "n" + result.length().to_string()
   let label = sanitize_dot_label(name)
   match value {
     TomlValue::Table(t) | TomlValue::InlineTable(t) => {
       let entries = t.to_array()
-      result.push(indent + "  " + node_id + " [label=\"" + label + "\", shape=ellipse];")
+      result.push(
+        indent + "  " + node_id + " [label=\"" + label + "\", shape=ellipse];",
+      )
       let mut i = 0
       while i < entries.length() {
-        let child_id = node_id + "_" + entries[i].0
+        let _child_id = node_id + "_" + entries[i].0
         dot_recursive(entries[i].1, entries[i].0, result, depth + 1)
-        result.push(indent + "  " + node_id + " -> n" + (result.length() - 1).to_string() + ";")
+        result.push(
+          indent +
+          "  " +
+          node_id +
+          " -> n" +
+          (result.length() - 1).to_string() +
+          ";",
+        )
         i = i + 1
       }
     }
     TomlValue::Array(arr) => {
       let arr_attr = ", shape=box];"
-      result.push(indent + "  " + node_id + " [label=\"" + label + " (Array)\"" + arr_attr)
+      result.push(
+        indent + "  " + node_id + " [label=\"" + label + " (Array)\"" + arr_attr,
+      )
       let mut j = 0
       while j < arr.length() {
         dot_recursive(arr[j], j.to_string(), result, depth + 1)
-        result.push(indent + "  " + node_id + " -> n" + (result.length() - 1).to_string() + ";")
+        result.push(
+          indent +
+          "  " +
+          node_id +
+          " -> n" +
+          (result.length() - 1).to_string() +
+          ";",
+        )
         j = j + 1
       }
     }
@@ -3560,11 +4753,21 @@ fn dot_recursive(value : TomlValue, name : String, result : Array[String], depth
         TomlValue::Bool(b) => if b { "true" } else { "false" }
         _ => "..."
       }
-      result.push(indent + "  " + node_id + " [label=\"" + label + " = " + val_str + "\", shape=record];")
+      result.push(
+        indent +
+        "  " +
+        node_id +
+        " [label=\"" +
+        label +
+        " = " +
+        val_str +
+        "\", shape=record];",
+      )
     }
   }
 }
 
+///|
 fn sanitize_dot_label(s : String) -> String {
   let mut r = ""
   let chars = s.to_array()
@@ -3580,11 +4783,13 @@ fn sanitize_dot_label(s : String) -> String {
   r
 }
 
+///|
 /// Convert to YAML-like format (approximate)
 pub fn to_yaml_like(value : TomlValue) -> String {
   ser_yaml(value, 0)
 }
 
+///|
 fn ser_yaml(value : TomlValue, depth : Int) -> String {
   let pad = String::make(depth * 2, Int::unsafe_to_char(32))
   match value {
@@ -3601,7 +4806,9 @@ fn ser_yaml(value : TomlValue, depth : Int) -> String {
       let mut i = 0
       while i < arr.length() {
         r = r + pad + "- " + ser_yaml(arr[i], depth + 1)
-        if i < arr.length() - 1 { r = r + "\n" }
+        if i < arr.length() - 1 {
+          r = r + "\n"
+        }
         i = i + 1
       }
       r
@@ -3617,7 +4824,9 @@ fn ser_yaml(value : TomlValue, depth : Int) -> String {
         } else {
           r = r + pad + entries[j].0 + ": " + child
         }
-        if j < entries.length() - 1 { r = r + "\n" }
+        if j < entries.length() - 1 {
+          r = r + "\n"
+        }
         j = j + 1
       }
       r
@@ -3625,6 +4834,7 @@ fn ser_yaml(value : TomlValue, depth : Int) -> String {
   }
 }
 
+///|
 /// Convert to INI format (supports 1 level of nesting)
 pub fn to_ini(value : TomlValue) -> String {
   match value {
@@ -3639,13 +4849,17 @@ pub fn to_ini(value : TomlValue) -> String {
             let sub_entries = sub.to_array()
             let mut k = 0
             while k < sub_entries.length() {
-              r = r + entries[i].0 + "." + sub_entries[k].0 + " = " + ser_value_str(sub_entries[k].1) + "\n"
+              r = r +
+                entries[i].0 +
+                "." +
+                sub_entries[k].0 +
+                " = " +
+                ser_value_str(sub_entries[k].1) +
+                "\n"
               k = k + 1
             }
           }
-          _ => {
-            r = r + entries[i].0 + " = " + ser_value_str(entries[i].1) + "\n"
-          }
+          _ => r = r + entries[i].0 + " = " + ser_value_str(entries[i].1) + "\n"
         }
         i = i + 1
       }
@@ -3655,6 +4869,7 @@ pub fn to_ini(value : TomlValue) -> String {
   }
 }
 
+///|
 fn ser_value_str(value : TomlValue) -> String {
   let dq = String::make(1, Int::unsafe_to_char(34))
   match value {
@@ -3673,15 +4888,26 @@ fn ser_value_str(value : TomlValue) -> String {
 // ============================================================
 // SECTION 8K: Advanced Query and Filtering
 // ============================================================
+
+///|
 /// Find all values matching a specific type name
-pub fn find_all_by_type(root : TomlValue, type_name : String) -> Array[(TomlPath, TomlValue)] {
+pub fn find_all_by_type(
+  root : TomlValue,
+  type_name : String,
+) -> Array[(TomlPath, TomlValue)] {
   let results : Array[(TomlPath, TomlValue)] = []
   let current_path : Array[PathSegment] = []
   find_all_by_type_recursive(root, type_name, current_path, results)
   results
 }
 
-fn find_all_by_type_recursive(value : TomlValue, type_name : String, path : Array[PathSegment], results : Array[(TomlPath, TomlValue)]) -> Unit {
+///|
+fn find_all_by_type_recursive(
+  value : TomlValue,
+  type_name : String,
+  path : Array[PathSegment],
+  results : Array[(TomlPath, TomlValue)],
+) -> Unit {
   if value.type_name() == type_name {
     let p : TomlPath = { segments: path }
     results.push((p, value))
@@ -3693,7 +4919,10 @@ fn find_all_by_type_recursive(value : TomlValue, type_name : String, path : Arra
       while i < entries.length() {
         let new_path : Array[PathSegment] = []
         let mut k = 0
-        while k < path.length() { new_path.push(path[k]); k = k + 1 }
+        while k < path.length() {
+          new_path.push(path[k])
+          k = k + 1
+        }
         new_path.push(PathSegment::Key(entries[i].0))
         find_all_by_type_recursive(entries[i].1, type_name, new_path, results)
         i = i + 1
@@ -3704,25 +4933,40 @@ fn find_all_by_type_recursive(value : TomlValue, type_name : String, path : Arra
       while j < arr.length() {
         let new_path : Array[PathSegment] = []
         let mut k = 0
-        while k < path.length() { new_path.push(path[k]); k = k + 1 }
+        while k < path.length() {
+          new_path.push(path[k])
+          k = k + 1
+        }
         new_path.push(PathSegment::Index(j))
         find_all_by_type_recursive(arr[j], type_name, new_path, results)
         j = j + 1
       }
     }
-    _ => { let _ = 0 }
+    _ => {
+      let _ = 0
+    }
   }
 }
 
+///|
 /// Find all keys containing a specific substring
-pub fn find_keys_containing(root : TomlValue, substr : String) -> Array[TomlPath] {
+pub fn find_keys_containing(
+  root : TomlValue,
+  substr : String,
+) -> Array[TomlPath] {
   let results : Array[TomlPath] = []
   let current_path : Array[PathSegment] = []
   find_keys_containing_recursive(root, substr, current_path, results)
   results
 }
 
-fn find_keys_containing_recursive(value : TomlValue, substr : String, path : Array[PathSegment], results : Array[TomlPath]) -> Unit {
+///|
+fn find_keys_containing_recursive(
+  value : TomlValue,
+  substr : String,
+  path : Array[PathSegment],
+  results : Array[TomlPath],
+) -> Unit {
   match value {
     TomlValue::Table(t) | TomlValue::InlineTable(t) => {
       let entries = t.to_array()
@@ -3732,14 +4976,20 @@ fn find_keys_containing_recursive(value : TomlValue, substr : String, path : Arr
         if key.contains(substr) {
           let new_path : Array[PathSegment] = []
           let mut k = 0
-          while k < path.length() { new_path.push(path[k]); k = k + 1 }
+          while k < path.length() {
+            new_path.push(path[k])
+            k = k + 1
+          }
           new_path.push(PathSegment::Key(key))
           let p : TomlPath = { segments: new_path }
           results.push(p)
         }
         let new_path2 : Array[PathSegment] = []
         let mut m = 0
-        while m < path.length() { new_path2.push(path[m]); m = m + 1 }
+        while m < path.length() {
+          new_path2.push(path[m])
+          m = m + 1
+        }
         new_path2.push(PathSegment::Key(key))
         find_keys_containing_recursive(entries[i].1, substr, new_path2, results)
         i = i + 1
@@ -3750,16 +5000,22 @@ fn find_keys_containing_recursive(value : TomlValue, substr : String, path : Arr
       while j < arr.length() {
         let new_path : Array[PathSegment] = []
         let mut k = 0
-        while k < path.length() { new_path.push(path[k]); k = k + 1 }
+        while k < path.length() {
+          new_path.push(path[k])
+          k = k + 1
+        }
         new_path.push(PathSegment::Index(j))
         find_keys_containing_recursive(arr[j], substr, new_path, results)
         j = j + 1
       }
     }
-    _ => { let _ = 0 }
+    _ => {
+      let _ = 0
+    }
   }
 }
 
+///|
 /// Get all leaf values in document order
 pub fn all_leaves(value : TomlValue) -> Array[TomlValue] {
   let results : Array[TomlValue] = []
@@ -3767,6 +5023,7 @@ pub fn all_leaves(value : TomlValue) -> Array[TomlValue] {
   results
 }
 
+///|
 fn collect_leaves(value : TomlValue, results : Array[TomlValue]) -> Unit {
   match value {
     TomlValue::Table(t) | TomlValue::InlineTable(t) => {
@@ -3784,13 +5041,15 @@ fn collect_leaves(value : TomlValue, results : Array[TomlValue]) -> Unit {
         j = j + 1
       }
     }
-    _ => { results.push(value) }
+    _ => results.push(value)
   }
 }
 
 // ============================================================
 // SECTION 8L: Schema Validation
 // ============================================================
+
+///|
 /// Represents a required field in a schema
 pub struct SchemaField {
   name : String
@@ -3798,8 +5057,12 @@ pub struct SchemaField {
   expected_type : String
 }
 
+///|
 /// Validate a TomlValue against a list of schema fields
-pub fn validate_schema(value : TomlValue, schema : Array[SchemaField]) -> ValidationResult {
+pub fn validate_schema(
+  value : TomlValue,
+  schema : Array[SchemaField],
+) -> ValidationResult {
   let errors : Array[String] = []
   match value {
     TomlValue::Table(t) | TomlValue::InlineTable(t) => {
@@ -3807,29 +5070,43 @@ pub fn validate_schema(value : TomlValue, schema : Array[SchemaField]) -> Valida
       while i < schema.length() {
         let field = schema[i]
         if field.required {
-          if (match t.get(field.name) { None => true; _ => false }) {
+          if (match t.get(field.name) {
+              None => true
+              _ => false
+            }) {
             errors.push("Missing required field: " + field.name)
           } else {
             match t.get(field.name) {
-              Some(v) => {
+              Some(v) =>
                 if v.type_name() != field.expected_type {
-                  errors.push("Type mismatch for field " + field.name + ": expected " + field.expected_type + ", got " + v.type_name())
+                  errors.push(
+                    "Type mismatch for field " +
+                    field.name +
+                    ": expected " +
+                    field.expected_type +
+                    ", got " +
+                    v.type_name(),
+                  )
                 }
+              None => {
+                let _ = 0
               }
-              None => { let _ = 0 }
             }
           }
         }
         i = i + 1
       }
     }
-    _ => {
-      errors.push("Schema validation requires a table or inline table")
-    }
+    _ => errors.push("Schema validation requires a table or inline table")
   }
-  if errors.length() > 0 { validation_fail(errors) } else { validation_ok() }
+  if errors.length() > 0 {
+    validation_fail(errors)
+  } else {
+    validation_ok()
+  }
 }
 
+///|
 /// Generate a schema from a TomlValue (infer structure)
 pub fn infer_schema(value : TomlValue) -> Array[SchemaField] {
   let schema : Array[SchemaField] = []
@@ -3841,40 +5118,53 @@ pub fn infer_schema(value : TomlValue) -> Array[SchemaField] {
         let f : SchemaField = {
           name: entries[i].0,
           required: true,
-          expected_type: entries[i].1.type_name()
+          expected_type: entries[i].1.type_name(),
         }
         schema.push(f)
         i = i + 1
       }
     }
-    _ => { let _ = 0 }
+    _ => {
+      let _ = 0
+    }
   }
   schema
 }
 
+///|
 /// Compare two schemas and return differences
-pub fn diff_schemas(left : Array[SchemaField], right : Array[SchemaField]) -> (Array[String], Array[String]) {
+pub fn diff_schemas(
+  left : Array[SchemaField],
+  right : Array[SchemaField],
+) -> (Array[String], Array[String]) {
   let added : Array[String] = []
   let removed : Array[String] = []
   let mut i = 0
   while i < right.length() {
     let found = is_field_in(right[i].name, left)
-    if !found { added.push(right[i].name) }
+    if !found {
+      added.push(right[i].name)
+    }
     i = i + 1
   }
   let mut j = 0
   while j < left.length() {
     let found = is_field_in(left[j].name, right)
-    if !found { removed.push(left[j].name) }
+    if !found {
+      removed.push(left[j].name)
+    }
     j = j + 1
   }
   (added, removed)
 }
 
+///|
 fn is_field_in(name : String, schema : Array[SchemaField]) -> Bool {
   let mut k = 0
   while k < schema.length() {
-    if schema[k].name == name { return true }
+    if schema[k].name == name {
+      return true
+    }
     k = k + 1
   }
   false
@@ -3883,6 +5173,8 @@ fn is_field_in(name : String, schema : Array[SchemaField]) -> Bool {
 // ============================================================
 // SECTION 8M: Extended Serialization (XML, CSV, etc.)
 // ============================================================
+
+///|
 /// Convert TomlValue to an XML-like string (approximate)
 pub fn to_xml_like(value : TomlValue, root_tag : String) -> String {
   let result : Array[String] = []
@@ -3891,14 +5183,22 @@ pub fn to_xml_like(value : TomlValue, root_tag : String) -> String {
   let mut r = ""
   let mut i = 0
   while i < result.length() {
-    if i > 0 { r = r + "\n" }
+    if i > 0 {
+      r = r + "\n"
+    }
     r = r + result[i]
     i = i + 1
   }
   r
 }
 
-fn xml_recursive(value : TomlValue, tag : String, depth : Int, result : Array[String]) -> Unit {
+///|
+fn xml_recursive(
+  value : TomlValue,
+  tag : String,
+  depth : Int,
+  result : Array[String],
+) -> Unit {
   let indent = String::make(depth * 2, Int::unsafe_to_char(32))
   let open_tag = "<" + tag + ">"
   let close_tag = "</" + tag + ">"
@@ -3922,35 +5222,41 @@ fn xml_recursive(value : TomlValue, tag : String, depth : Int, result : Array[St
       }
       result.push(indent + close_tag)
     }
-    TomlValue::Str(s) => {
+    TomlValue::Str(s) =>
       result.push(indent + open_tag + xml_escape(s) + close_tag)
-    }
-    _ => {
-      result.push(indent + open_tag + ser_value_str(value) + close_tag)
-    }
+    _ => result.push(indent + open_tag + ser_value_str(value) + close_tag)
   }
 }
 
+///|
 fn xml_escape(s : String) -> String {
   let mut r = ""
   let chars = s.to_array()
   let mut i = 0
   while i < chars.length() {
     let c = chars[i]
-    if c == Int::unsafe_to_char(60) { r = r + "&lt;" }
-    else if c == Int::unsafe_to_char(62) { r = r + "&gt;" }
-    else if c == Int::unsafe_to_char(38) { r = r + "&amp;" }
-    else { r = r + String::make(1, c) }
+    if c == Int::unsafe_to_char(60) {
+      r = r + "&lt;"
+    } else if c == Int::unsafe_to_char(62) {
+      r = r + "&gt;"
+    } else if c == Int::unsafe_to_char(38) {
+      r = r + "&amp;"
+    } else {
+      r = r + String::make(1, c)
+    }
     i = i + 1
   }
   r
 }
 
+///|
 /// Convert Table to CSV string (flattens first level of arrays if present)
 pub fn to_csv(value : TomlValue) -> String? {
   match value {
     TomlValue::Array(arr) => {
-      if arr.length() == 0 { return None }
+      if arr.length() == 0 {
+        return None
+      }
       let headers = get_csv_headers(arr[0])
       let mut csv_str = join_csv_headers(headers) + "\n"
       let mut i = 0
@@ -3964,6 +5270,7 @@ pub fn to_csv(value : TomlValue) -> String? {
   }
 }
 
+///|
 fn get_csv_headers(value : TomlValue) -> Array[String] {
   let headers : Array[String] = []
   match value {
@@ -3975,34 +5282,41 @@ fn get_csv_headers(value : TomlValue) -> Array[String] {
         i = i + 1
       }
     }
-    _ => { let _ = 0 }
+    _ => {
+      let _ = 0
+    }
   }
   headers
 }
 
+///|
 fn join_csv_headers(headers : Array[String]) -> String {
   let mut r = ""
   let mut i = 0
   while i < headers.length() {
-    if i > 0 { r = r + "," }
+    if i > 0 {
+      r = r + ","
+    }
     r = r + headers[i]
     i = i + 1
   }
   r
 }
 
+///|
 fn get_csv_row(value : TomlValue, headers : Array[String]) -> String {
   let mut r = ""
   let mut i = 0
   while i < headers.length() {
-    if i > 0 { r = r + "," }
+    if i > 0 {
+      r = r + ","
+    }
     match value {
-      TomlValue::Table(t) | TomlValue::InlineTable(t) => {
+      TomlValue::Table(t) | TomlValue::InlineTable(t) =>
         match t.get(headers[i]) {
           Some(v) => r = r + csv_escape(v)
           None => r = r + ""
         }
-      }
       _ => r = r + ""
     }
     i = i + 1
@@ -4010,6 +5324,7 @@ fn get_csv_row(value : TomlValue, headers : Array[String]) -> String {
   r
 }
 
+///|
 fn csv_escape(value : TomlValue) -> String {
   let dq = String::make(1, Int::unsafe_to_char(34))
   match value {
@@ -4024,6 +5339,8 @@ fn csv_escape(value : TomlValue) -> String {
 // ============================================================
 // SECTION 8N: Utility Functions
 // ============================================================
+
+///|
 /// Compute a simple hash of a TomlValue (for caching/deduplication)
 pub fn hash_value(value : TomlValue) -> Int {
   let mut h = 0
@@ -4037,12 +5354,14 @@ pub fn hash_value(value : TomlValue) -> Int {
   h
 }
 
+///|
 /// Compute a fingerprint string (MD5-like mock for debugging)
 pub fn fingerprint(value : TomlValue) -> String {
   let h = hash_value(value)
   "fp:" + h.to_string()
 }
 
+///|
 /// Count the total number of nodes in the tree
 pub fn count_nodes(value : TomlValue) -> Int {
   match value {
@@ -4069,6 +5388,7 @@ pub fn count_nodes(value : TomlValue) -> Int {
   }
 }
 
+///|
 /// Get maximum width of the tree (maximum number of siblings at any level)
 pub fn max_width(value : TomlValue) -> Int {
   match value {
@@ -4079,10 +5399,16 @@ pub fn max_width(value : TomlValue) -> Int {
       let mut i = 0
       while i < entries.length() {
         let cw = max_width(entries[i].1)
-        if cw > max_child { max_child = cw }
+        if cw > max_child {
+          max_child = cw
+        }
         i = i + 1
       }
-      if w > max_child { w } else { max_child }
+      if w > max_child {
+        w
+      } else {
+        max_child
+      }
     }
     TomlValue::Array(arr) => {
       let w = arr.length()
@@ -4090,10 +5416,16 @@ pub fn max_width(value : TomlValue) -> Int {
       let mut j = 0
       while j < arr.length() {
         let cw = max_width(arr[j])
-        if cw > max_child { max_child = cw }
+        if cw > max_child {
+          max_child = cw
+        }
         j = j + 1
       }
-      if w > max_child { w } else { max_child }
+      if w > max_child {
+        w
+      } else {
+        max_child
+      }
     }
     _ => 1
   }
@@ -4102,6 +5434,8 @@ pub fn max_width(value : TomlValue) -> Int {
 // ============================================================
 // SECTION 8O: Type Conversion and Coercion
 // ============================================================
+
+///|
 /// Attempt to coerce a TomlValue to a string representation
 pub fn to_string_coerce(value : TomlValue) -> String {
   match value {
@@ -4118,6 +5452,7 @@ pub fn to_string_coerce(value : TomlValue) -> String {
   }
 }
 
+///|
 /// Attempt to parse a TomlValue as an integer (returns 0 if fail)
 pub fn to_int_coerce(value : TomlValue) -> Int {
   match value {
@@ -4128,6 +5463,7 @@ pub fn to_int_coerce(value : TomlValue) -> Int {
   }
 }
 
+///|
 /// Attempt to parse a TomlValue as a float
 pub fn to_float_coerce(value : TomlValue) -> Double {
   match value {
@@ -4137,6 +5473,7 @@ pub fn to_float_coerce(value : TomlValue) -> Double {
   }
 }
 
+///|
 /// Attempt to parse a TomlValue as a boolean
 pub fn to_bool_coerce(value : TomlValue) -> Bool {
   match value {
@@ -4148,6 +5485,7 @@ pub fn to_bool_coerce(value : TomlValue) -> Bool {
   }
 }
 
+///|
 /// Convert a TomlValue to an array of strings
 pub fn to_string_array(value : TomlValue) -> Array[String] {
   let result : Array[String] = []
@@ -4159,11 +5497,12 @@ pub fn to_string_array(value : TomlValue) -> Array[String] {
         i = i + 1
       }
     }
-    _ => { result.push(to_string_coerce(value)) }
+    _ => result.push(to_string_coerce(value))
   }
   result
 }
 
+///|
 /// Flatten all nested arrays into a single array
 pub fn flatten_arrays(value : TomlValue) -> Array[TomlValue] {
   let result : Array[TomlValue] = []
@@ -4171,7 +5510,11 @@ pub fn flatten_arrays(value : TomlValue) -> Array[TomlValue] {
   result
 }
 
-fn flatten_arrays_recursive(value : TomlValue, result : Array[TomlValue]) -> Unit {
+///|
+fn flatten_arrays_recursive(
+  value : TomlValue,
+  result : Array[TomlValue],
+) -> Unit {
   match value {
     TomlValue::Array(arr) => {
       let mut i = 0
@@ -4180,13 +5523,15 @@ fn flatten_arrays_recursive(value : TomlValue, result : Array[TomlValue]) -> Uni
         i = i + 1
       }
     }
-    _ => { result.push(value) }
+    _ => result.push(value)
   }
 }
 
 // ============================================================
 // SECTION 8P: Advanced Serialization Formats
 // ============================================================
+
+///|
 /// Convert to Java Properties-like format
 pub fn to_properties(value : TomlValue) -> String {
   let result : Array[String] = []
@@ -4194,37 +5539,49 @@ pub fn to_properties(value : TomlValue) -> String {
   let mut r = ""
   let mut i = 0
   while i < result.length() {
-    if i > 0 { r = r + "\n" }
+    if i > 0 {
+      r = r + "\n"
+    }
     r = r + result[i]
     i = i + 1
   }
   r
 }
 
-fn properties_recursive(value : TomlValue, prefix : String, result : Array[String]) -> Unit {
+///|
+fn properties_recursive(
+  value : TomlValue,
+  prefix : String,
+  result : Array[String],
+) -> Unit {
   match value {
     TomlValue::Table(t) | TomlValue::InlineTable(t) => {
       let entries = t.to_array()
       let mut i = 0
       while i < entries.length() {
-        let new_prefix = if prefix == "" { entries[i].0 } else { prefix + "." + entries[i].0 }
+        let new_prefix = if prefix == "" {
+          entries[i].0
+        } else {
+          prefix + "." + entries[i].0
+        }
         properties_recursive(entries[i].1, new_prefix, result)
         i = i + 1
       }
     }
-    _ => {
+    _ =>
       if prefix != "" {
         result.push(prefix + " = " + to_string_coerce(value))
       }
-    }
   }
 }
 
+///|
 /// Convert to JSON5-like format (allows comments, trailing commas, unquoted keys)
 pub fn to_json5(value : TomlValue) -> String {
   json5_recursive(value, 0)
 }
 
+///|
 fn json5_recursive(value : TomlValue, depth : Int) -> String {
   let pad = String::make(depth * 2, Int::unsafe_to_char(32))
   let dq = String::make(1, Int::unsafe_to_char(34))
@@ -4238,26 +5595,40 @@ fn json5_recursive(value : TomlValue, depth : Int) -> String {
     TomlValue::LocalDate(d) => dq + d.date + dq
     TomlValue::LocalTime(t) => dq + t.time + dq
     TomlValue::Array(arr) => {
-      if arr.length() == 0 { return "[]" }
+      if arr.length() == 0 {
+        return "[]"
+      }
       let mut r = "[\n"
       let mut i = 0
       while i < arr.length() {
-        r = r + String::make((depth + 1) * 2, Int::unsafe_to_char(32)) + json5_recursive(arr[i], depth + 1)
-        if i < arr.length() - 1 { r = r + "," }
+        r = r +
+          String::make((depth + 1) * 2, Int::unsafe_to_char(32)) +
+          json5_recursive(arr[i], depth + 1)
+        if i < arr.length() - 1 {
+          r = r + ","
+        }
         r = r + "\n"
         i = i + 1
       }
       r + pad + "]"
     }
     TomlValue::Table(t) | TomlValue::InlineTable(t) => {
-      if t.length() == 0 { return "{}" }
+      if t.length() == 0 {
+        return "{}"
+      }
       let entries = t.to_array()
       let mut r = "{\n"
       let mut j = 0
       while j < entries.length() {
         let key = entries[j].0
-        r = r + String::make((depth + 1) * 2, Int::unsafe_to_char(32)) + key + ": " + json5_recursive(entries[j].1, depth + 1)
-        if j < entries.length() - 1 { r = r + "," }
+        r = r +
+          String::make((depth + 1) * 2, Int::unsafe_to_char(32)) +
+          key +
+          ": " +
+          json5_recursive(entries[j].1, depth + 1)
+        if j < entries.length() - 1 {
+          r = r + ","
+        }
         r = r + "\n"
         j = j + 1
       }
@@ -4269,19 +5640,24 @@ fn json5_recursive(value : TomlValue, depth : Int) -> String {
 // ============================================================
 // SECTION 8Q: Tree Manipulation
 // ============================================================
+
+///|
 /// Transpose a table of arrays into an array of tables (if all arrays have same length)
 pub fn transpose(value : TomlValue) -> TomlValue? {
   match value {
     TomlValue::Table(t) => {
       let entries = t.to_array()
-      if entries.length() == 0 { return Some(TomlValue::Array([])) }
+      if entries.length() == 0 {
+        return Some(TomlValue::Array([]))
+      }
       let mut max_len = 0
       let mut i = 0
       while i < entries.length() {
         match entries[i].1 {
-          TomlValue::Array(arr) => {
-            if arr.length() > max_len { max_len = arr.length() }
-          }
+          TomlValue::Array(arr) =>
+            if arr.length() > max_len {
+              max_len = arr.length()
+            }
           _ => return None
         }
         i = i + 1
@@ -4293,11 +5669,10 @@ pub fn transpose(value : TomlValue) -> TomlValue? {
         let mut k = 0
         while k < entries.length() {
           match entries[k].1 {
-            TomlValue::Array(arr) => {
+            TomlValue::Array(arr) =>
               if j < arr.length() {
                 row.set(entries[k].0, arr[j])
               }
-            }
             _ => return None
           }
           k = k + 1
@@ -4311,6 +5686,7 @@ pub fn transpose(value : TomlValue) -> TomlValue? {
   }
 }
 
+///|
 /// Rotate table keys (swap keys and values for simple string tables)
 pub fn rotate_table(value : TomlValue) -> TomlValue? {
   match value {
@@ -4331,14 +5707,24 @@ pub fn rotate_table(value : TomlValue) -> TomlValue? {
   }
 }
 
+///|
 /// Extract a sub-table at a given depth
-pub fn extract_subtree(value : TomlValue, target_depth : Int) -> Array[TomlValue] {
+pub fn extract_subtree(
+  value : TomlValue,
+  target_depth : Int,
+) -> Array[TomlValue] {
   let results : Array[TomlValue] = []
   extract_subtree_recursive(value, 0, target_depth, results)
   results
 }
 
-fn extract_subtree_recursive(value : TomlValue, current_depth : Int, target_depth : Int, results : Array[TomlValue]) -> Unit {
+///|
+fn extract_subtree_recursive(
+  value : TomlValue,
+  current_depth : Int,
+  target_depth : Int,
+  results : Array[TomlValue],
+) -> Unit {
   if current_depth == target_depth {
     results.push(value)
     return
@@ -4348,24 +5734,38 @@ fn extract_subtree_recursive(value : TomlValue, current_depth : Int, target_dept
       let entries = t.to_array()
       let mut i = 0
       while i < entries.length() {
-        extract_subtree_recursive(entries[i].1, current_depth + 1, target_depth, results)
+        extract_subtree_recursive(
+          entries[i].1,
+          current_depth + 1,
+          target_depth,
+          results,
+        )
         i = i + 1
       }
     }
     TomlValue::Array(arr) => {
       let mut j = 0
       while j < arr.length() {
-        extract_subtree_recursive(arr[j], current_depth + 1, target_depth, results)
+        extract_subtree_recursive(
+          arr[j],
+          current_depth + 1,
+          target_depth,
+          results,
+        )
         j = j + 1
       }
     }
-    _ => { let _ = 0 }
+    _ => {
+      let _ = 0
+    }
   }
 }
 
 // ============================================================
 // SECTION 8R: Advanced Builder Functions
 // ============================================================
+
+///|
 /// Create an array of strings from a list of strings
 pub fn builder_array_of_strings(strings : Array[String]) -> TomlValue {
   let arr : Array[TomlValue] = []
@@ -4377,8 +5777,11 @@ pub fn builder_array_of_strings(strings : Array[String]) -> TomlValue {
   TomlValue::Array(arr)
 }
 
+///|
 /// Create a table from key-value pairs
-pub fn builder_table_from_pairs(pairs : Array[(String, TomlValue)]) -> TomlValue {
+pub fn builder_table_from_pairs(
+  pairs : Array[(String, TomlValue)],
+) -> TomlValue {
   let t : Map[String, TomlValue] = Map([])
   let mut i = 0
   while i < pairs.length() {
@@ -4388,8 +5791,11 @@ pub fn builder_table_from_pairs(pairs : Array[(String, TomlValue)]) -> TomlValue
   TomlValue::Table(t)
 }
 
+///|
 /// Create an inline table from key-value pairs
-pub fn builder_inline_table_from_pairs(pairs : Array[(String, TomlValue)]) -> TomlValue {
+pub fn builder_inline_table_from_pairs(
+  pairs : Array[(String, TomlValue)],
+) -> TomlValue {
   let t : Map[String, TomlValue] = Map([])
   let mut i = 0
   while i < pairs.length() {
@@ -4399,6 +5805,7 @@ pub fn builder_inline_table_from_pairs(pairs : Array[(String, TomlValue)]) -> To
   TomlValue::InlineTable(t)
 }
 
+///|
 /// Create a nested table path
 pub fn builder_nested_table(path : Array[String]) -> TomlValue {
   let mut current : TomlValue = TomlValue::Table(Map([]))
@@ -4412,9 +5819,12 @@ pub fn builder_nested_table(path : Array[String]) -> TomlValue {
   current
 }
 
+///|
 /// Create a deeply nested array structure
 pub fn builder_nested_array(depth : Int, leaf : TomlValue) -> TomlValue {
-  if depth <= 0 { return leaf }
+  if depth <= 0 {
+    return leaf
+  }
   let arr : Array[TomlValue] = []
   arr.push(builder_nested_array(depth - 1, leaf))
   TomlValue::Array(arr)
@@ -4423,6 +5833,8 @@ pub fn builder_nested_array(depth : Int, leaf : TomlValue) -> TomlValue {
 // ============================================================
 // SECTION 8S: Debug and Inspection
 // ============================================================
+
+///|
 /// Print the structure of a TomlValue as a tree
 pub fn debug_tree(value : TomlValue) -> String {
   let result : Array[String] = []
@@ -4430,14 +5842,21 @@ pub fn debug_tree(value : TomlValue) -> String {
   let mut r = ""
   let mut i = 0
   while i < result.length() {
-    if i > 0 { r = r + "\n" }
+    if i > 0 {
+      r = r + "\n"
+    }
     r = r + result[i]
     i = i + 1
   }
   r
 }
 
-fn debug_tree_recursive(value : TomlValue, depth : Int, result : Array[String]) -> Unit {
+///|
+fn debug_tree_recursive(
+  value : TomlValue,
+  depth : Int,
+  result : Array[String],
+) -> Unit {
   let pad = String::make(depth * 2, Int::unsafe_to_char(32))
   match value {
     TomlValue::Table(t) | TomlValue::InlineTable(t) => {
@@ -4460,12 +5879,11 @@ fn debug_tree_recursive(value : TomlValue, depth : Int, result : Array[String]) 
       }
       result.push(pad + "]")
     }
-    _ => {
-      result.push(pad + to_string_coerce(value))
-    }
+    _ => result.push(pad + to_string_coerce(value))
   }
 }
 
+///|
 /// Generate a summary of differences between two TOML documents
 pub fn summary_diff(old_val : TomlValue, new_val : TomlValue) -> String {
   let diffs = diff(old_val, new_val)
@@ -4479,7 +5897,6 @@ pub fn summary_diff(old_val : TomlValue, new_val : TomlValue) -> String {
       DiffKind::Added(_) => added = added + 1
       DiffKind::Removed(_) => removed = removed + 1
       DiffKind::Modified(_, _) => modified = modified + 1
-      _ => { let _ = 0 }
     }
     i = i + 1
   }
@@ -4493,6 +5910,8 @@ pub fn summary_diff(old_val : TomlValue, new_val : TomlValue) -> String {
 // ============================================================
 // SECTION 8T: Event-Driven Parser Simulation (State Machine)
 // ============================================================
+
+///|
 /// Represents a parsing event in a stream
 pub enum ParseEvent {
   StartDocument
@@ -4503,10 +5922,14 @@ pub enum ParseEvent {
   StartArray(String)
   EndArray(String)
   ArrayItem(TomlValue)
-  Comment(String)
-  Error(String)
 }
 
+///|
+fn _planned_parse_events() -> Array[ParseEvent] {
+  []
+}
+
+///|
 /// Parse events from a TomlValue (simulates streaming)
 pub fn parse_events(value : TomlValue) -> Array[ParseEvent] {
   let events : Array[ParseEvent] = []
@@ -4516,17 +5939,26 @@ pub fn parse_events(value : TomlValue) -> Array[ParseEvent] {
   events
 }
 
-fn event_recursive(value : TomlValue, name : String, events : Array[ParseEvent]) -> Unit {
+///|
+fn event_recursive(
+  value : TomlValue,
+  name : String,
+  events : Array[ParseEvent],
+) -> Unit {
   match value {
     TomlValue::Table(t) => {
-      if name != "" { events.push(ParseEvent::StartTable(name)) }
+      if name != "" {
+        events.push(ParseEvent::StartTable(name))
+      }
       let entries = t.to_array()
       let mut i = 0
       while i < entries.length() {
         event_recursive(entries[i].1, entries[i].0, events)
         i = i + 1
       }
-      if name != "" { events.push(ParseEvent::EndTable(name)) }
+      if name != "" {
+        events.push(ParseEvent::EndTable(name))
+      }
     }
     TomlValue::InlineTable(t) => {
       events.push(ParseEvent::StartTable(name))
@@ -4547,27 +5979,22 @@ fn event_recursive(value : TomlValue, name : String, events : Array[ParseEvent])
       }
       events.push(ParseEvent::EndArray(name))
     }
-    _ => {
-      if name != "" {
-        events.push(ParseEvent::KeyValue(name, value))
-      }
-    }
+    _ => if name != "" { events.push(ParseEvent::KeyValue(name, value)) }
   }
 }
 
+///|
 /// Count events by type
 pub fn count_events(events : Array[ParseEvent]) -> Map[String, Int] {
   let counts : Map[String, Int] = Map([])
   let mut i = 0
   while i < events.length() {
     let type_name = match events[i] {
-      ParseEvent::StartDocument(_) | ParseEvent::EndDocument(_) => "Document"
+      ParseEvent::StartDocument | ParseEvent::EndDocument => "Document"
       ParseEvent::StartTable(_) | ParseEvent::EndTable(_) => "Table"
       ParseEvent::KeyValue(_, _) => "KeyValue"
       ParseEvent::StartArray(_) | ParseEvent::EndArray(_) => "Array"
       ParseEvent::ArrayItem(_) => "ArrayItem"
-      ParseEvent::Comment(_) => "Comment"
-      ParseEvent::Error(_) => "Error"
     }
     match counts.get(type_name) {
       Some(c) => counts.set(type_name, c + 1)
@@ -4581,6 +6008,8 @@ pub fn count_events(events : Array[ParseEvent]) -> Map[String, Int] {
 // ============================================================
 // SECTION 8U: TOML to SQL Mapper
 // ============================================================
+
+///|
 /// Generate CREATE TABLE statements from a TomlValue
 pub fn to_sql_create(value : TomlValue, table_name : String) -> String? {
   match value {
@@ -4606,22 +6035,28 @@ pub fn to_sql_create(value : TomlValue, table_name : String) -> String? {
   }
 }
 
+///|
 fn join_sql_columns(cols : Array[String]) -> String {
   let mut r = ""
   let mut i = 0
   while i < cols.length() {
-    if i > 0 { r = r + ", " }
+    if i > 0 {
+      r = r + ", "
+    }
     r = r + cols[i]
     i = i + 1
   }
   r
 }
 
+///|
 /// Generate INSERT statements from an array of TomlValues
 pub fn to_sql_inserts(value : TomlValue, table_name : String) -> String? {
   match value {
     TomlValue::Array(arr) => {
-      if arr.length() == 0 { return None }
+      if arr.length() == 0 {
+        return None
+      }
       let headers = get_csv_headers(arr[0])
       let mut r = ""
       let mut i = 0
@@ -4630,17 +6065,23 @@ pub fn to_sql_inserts(value : TomlValue, table_name : String) -> String? {
         let mut j = 0
         while j < headers.length() {
           match arr[i] {
-            TomlValue::Table(t) | TomlValue::InlineTable(t) => {
+            TomlValue::Table(t) | TomlValue::InlineTable(t) =>
               match t.get(headers[j]) {
                 Some(v) => values.push(sql_value(v))
                 None => values.push("NULL")
               }
-            }
             _ => values.push("NULL")
           }
           j = j + 1
         }
-        r = r + "INSERT INTO " + table_name + " (" + join_sql_columns(headers) + ") VALUES (" + join_sql_columns(values) + ");\n"
+        r = r +
+          "INSERT INTO " +
+          table_name +
+          " (" +
+          join_sql_columns(headers) +
+          ") VALUES (" +
+          join_sql_columns(values) +
+          ");\n"
         i = i + 1
       }
       Some(r)
@@ -4649,6 +6090,7 @@ pub fn to_sql_inserts(value : TomlValue, table_name : String) -> String? {
   }
 }
 
+///|
 fn sql_value(value : TomlValue) -> String {
   match value {
     TomlValue::Str(s) => "'" + s + "'"
@@ -4662,6 +6104,8 @@ fn sql_value(value : TomlValue) -> String {
 // ============================================================
 // SECTION 8V: Configuration Profile Manager
 // ============================================================
+
+///|
 /// Represents a configuration profile
 pub struct Profile {
   name : String
@@ -4669,6 +6113,12 @@ pub struct Profile {
   parent : String?
 }
 
+///|
+fn _new_profile() -> Profile {
+  { name: "", data: TomlValue::Table(Map([])), parent: None }
+}
+
+///|
 /// Merge a list of profiles in order (later overrides earlier)
 pub fn merge_profiles(profiles : Array[Profile]) -> TomlValue {
   let mut result : TomlValue = TomlValue::Table(Map([]))
@@ -4680,9 +6130,14 @@ pub fn merge_profiles(profiles : Array[Profile]) -> TomlValue {
   result
 }
 
+///|
 /// Validate that all profiles have the same schema
-pub fn validate_profile_consistency(profiles : Array[Profile]) -> ValidationResult {
-  if profiles.length() == 0 { return validation_ok() }
+pub fn validate_profile_consistency(
+  profiles : Array[Profile],
+) -> ValidationResult {
+  if profiles.length() == 0 {
+    return validation_ok()
+  }
   let base_schema = infer_schema(profiles[0].data)
   let errors : Array[String] = []
   let mut i = 1
@@ -4696,35 +6151,48 @@ pub fn validate_profile_consistency(profiles : Array[Profile]) -> ValidationResu
     }
     let mut k = 0
     while k < removed.length() {
-      errors.push("Profile " + profiles[i].name + " removes field: " + removed[k])
+      errors.push(
+        "Profile " + profiles[i].name + " removes field: " + removed[k],
+      )
       k = k + 1
     }
     i = i + 1
   }
-  if errors.length() > 0 { validation_fail(errors) } else { validation_ok() }
+  if errors.length() > 0 {
+    validation_fail(errors)
+  } else {
+    validation_ok()
+  }
 }
 
+///|
 /// Get a value from a profile with fallback to parent
-pub fn profile_get_with_fallback(profile : Profile, path : TomlPath, defaults : TomlValue) -> TomlValue? {
+pub fn profile_get_with_fallback(
+  profile : Profile,
+  path : TomlPath,
+  defaults : TomlValue,
+) -> TomlValue? {
   match resolve_path(profile.data, path) {
     Some(v) => Some(v)
-    None => {
+    None =>
       match resolve_path(defaults, path) {
         Some(v) => Some(v)
         None => None
       }
-    }
   }
 }
 
 // ============================================================
 // SECTION 8W: YAML Block Style Serialization
 // ============================================================
+
+///|
 /// Convert to YAML block style with explicit types
 pub fn to_yaml_block(value : TomlValue) -> String {
   yaml_block_recursive(value, 0)
 }
 
+///|
 fn yaml_block_recursive(value : TomlValue, depth : Int) -> String {
   let pad = String::make(depth * 2, Int::unsafe_to_char(32))
   match value {
@@ -4737,26 +6205,34 @@ fn yaml_block_recursive(value : TomlValue, depth : Int) -> String {
     TomlValue::LocalDate(d) => "!!date " + d.date
     TomlValue::LocalTime(t) => "!!time " + t.time
     TomlValue::Array(arr) => {
-      if arr.length() == 0 { return "!!seq []" }
+      if arr.length() == 0 {
+        return "!!seq []"
+      }
       let mut r = pad + "!!seq\n"
       let mut i = 0
       while i < arr.length() {
         let child = yaml_block_recursive(arr[i], depth + 1)
         r = r + pad + "- " + child
-        if i < arr.length() - 1 { r = r + "\n" }
+        if i < arr.length() - 1 {
+          r = r + "\n"
+        }
         i = i + 1
       }
       r
     }
     TomlValue::Table(t) | TomlValue::InlineTable(t) => {
-      if t.length() == 0 { return "!!map {}" }
+      if t.length() == 0 {
+        return "!!map {}"
+      }
       let entries = t.to_array()
       let mut r = pad + "!!map\n"
       let mut j = 0
       while j < entries.length() {
         let child = yaml_block_recursive(entries[j].1, depth + 1)
         r = r + pad + entries[j].0 + ":\n" + child
-        if j < entries.length() - 1 { r = r + "\n" }
+        if j < entries.length() - 1 {
+          r = r + "\n"
+        }
         j = j + 1
       }
       r
@@ -4767,6 +6243,8 @@ fn yaml_block_recursive(value : TomlValue, depth : Int) -> String {
 // ============================================================
 // SECTION 8X: Comprehensive Error Reporting
 // ============================================================
+
+///|
 /// Represents an error report
 pub struct ErrorReport {
   summary : String
@@ -4774,29 +6252,34 @@ pub struct ErrorReport {
   suggestions : Array[String]
 }
 
+///|
 /// Generate an error report from a validation result
 pub fn generate_error_report(result : ValidationResult) -> ErrorReport {
   let details : Array[String] = []
   let suggestions : Array[String] = []
   match result.valid {
-    true => {
+    true =>
       return { summary: "Validation passed", details: [], suggestions: [] }
-    }
     false => {
       let errors = result.errors
       let mut i = 0
       while i < errors.length() {
         details.push(errors[i])
         let suggestion = generate_suggestion(errors[i])
-        if suggestion != "" { suggestions.push(suggestion) }
+        if suggestion != "" {
+          suggestions.push(suggestion)
+        }
         i = i + 1
       }
     }
   }
-  let summary = "Validation failed with " + details.length().to_string() + " errors"
-  { summary: summary, details: details, suggestions: suggestions }
+  let summary = "Validation failed with " +
+    details.length().to_string() +
+    " errors"
+  { summary, details, suggestions }
 }
 
+///|
 fn generate_suggestion(error : String) -> String {
   if error.contains("Missing required field") {
     "Add the missing field to your configuration"
@@ -4811,6 +6294,7 @@ fn generate_suggestion(error : String) -> String {
   }
 }
 
+///|
 /// Format an error report as a string
 pub fn format_error_report(report : ErrorReport) -> String {
   let mut r = "=== Error Report ===\n"
@@ -4836,6 +6320,7 @@ pub fn format_error_report(report : ErrorReport) -> String {
 // SECTION 9: Query API
 // ============================================================
 
+///|
 /// Get a top-level key from a table or inline table value
 pub fn get_key(value : TomlValue, key : String) -> TomlValue? {
   match value {
@@ -4844,6 +6329,7 @@ pub fn get_key(value : TomlValue, key : String) -> TomlValue? {
   }
 }
 
+///|
 /// Navigate a nested path using an array of keys
 /// Returns None if any intermediate key is missing or not a table
 pub fn get_nested(value : TomlValue, keys : Array[String]) -> TomlValue? {
@@ -4851,9 +6337,8 @@ pub fn get_nested(value : TomlValue, keys : Array[String]) -> TomlValue? {
   let mut i = 0
   while i < keys.length() {
     match current {
-      Some(TomlValue::Table(t)) | Some(TomlValue::InlineTable(t)) => {
+      Some(TomlValue::Table(t)) | Some(TomlValue::InlineTable(t)) =>
         current = t.get(keys[i])
-      }
       _ => return None
     }
     i = i + 1
@@ -4861,12 +6346,14 @@ pub fn get_nested(value : TomlValue, keys : Array[String]) -> TomlValue? {
   current
 }
 
+///|
 /// Navigate a dotted path like "server.database.host"
 pub fn get_by_path(value : TomlValue, dotted_path : String) -> TomlValue? {
   let keys = dotted_path.split(".").to_array().map(fn(sv) { sv.to_owned() })
   get_nested(value, keys)
 }
 
+///|
 /// Type-safe string getter
 pub fn get_string(value : TomlValue, key : String) -> String? {
   match get_key(value, key) {
@@ -4875,6 +6362,7 @@ pub fn get_string(value : TomlValue, key : String) -> String? {
   }
 }
 
+///|
 /// Type-safe integer getter
 pub fn get_int(value : TomlValue, key : String) -> Int? {
   match get_key(value, key) {
@@ -4883,6 +6371,7 @@ pub fn get_int(value : TomlValue, key : String) -> Int? {
   }
 }
 
+///|
 /// Type-safe float getter
 pub fn get_float(value : TomlValue, key : String) -> Double? {
   match get_key(value, key) {
@@ -4891,6 +6380,7 @@ pub fn get_float(value : TomlValue, key : String) -> Double? {
   }
 }
 
+///|
 /// Type-safe boolean getter
 pub fn get_bool(value : TomlValue, key : String) -> Bool? {
   match get_key(value, key) {
@@ -4899,6 +6389,7 @@ pub fn get_bool(value : TomlValue, key : String) -> Bool? {
   }
 }
 
+///|
 /// Type-safe array getter
 pub fn get_array(value : TomlValue, key : String) -> Array[TomlValue]? {
   match get_key(value, key) {
@@ -4907,6 +6398,7 @@ pub fn get_array(value : TomlValue, key : String) -> Array[TomlValue]? {
   }
 }
 
+///|
 /// Type-safe table getter
 pub fn get_table(value : TomlValue, key : String) -> Map[String, TomlValue]? {
   match get_key(value, key) {
@@ -4915,11 +6407,17 @@ pub fn get_table(value : TomlValue, key : String) -> Map[String, TomlValue]? {
   }
 }
 
+///|
 /// Get array element by index
 pub fn get_at(arr : Array[TomlValue], index : Int) -> TomlValue? {
-  if index < 0 || index >= arr.length() { None } else { Some(arr[index]) }
+  if index < 0 || index >= arr.length() {
+    None
+  } else {
+    Some(arr[index])
+  }
 }
 
+///|
 /// Check if a key exists in a table
 pub fn has_key(value : TomlValue, key : String) -> Bool {
   match get_key(value, key) {
@@ -4928,6 +6426,7 @@ pub fn has_key(value : TomlValue, key : String) -> Bool {
   }
 }
 
+///|
 /// Get all keys from a table value
 pub fn keys(value : TomlValue) -> Array[String] {
   match value {
@@ -4945,6 +6444,7 @@ pub fn keys(value : TomlValue) -> Array[String] {
   }
 }
 
+///|
 /// Get all values from a table value
 pub fn values(value : TomlValue) -> Array[TomlValue] {
   match value {
@@ -4962,6 +6462,7 @@ pub fn values(value : TomlValue) -> Array[TomlValue] {
   }
 }
 
+///|
 /// Get the number of entries in a table or array
 pub fn len(value : TomlValue) -> Int {
   match value {
@@ -4972,17 +6473,26 @@ pub fn len(value : TomlValue) -> Int {
   }
 }
 
+///|
 /// Check if a table is empty or array is empty
-pub fn is_empty(value : TomlValue) -> Bool { len(value) == 0 }
+pub fn is_empty(value : TomlValue) -> Bool {
+  len(value) == 0
+}
 
+///|
 /// Get the string value or a default
-pub fn get_string_or(value : TomlValue, key : String, default : String) -> String {
+pub fn get_string_or(
+  value : TomlValue,
+  key : String,
+  default : String,
+) -> String {
   match get_string(value, key) {
     Some(s) => s
     None => default
   }
 }
 
+///|
 /// Get the int value or a default
 pub fn get_int_or(value : TomlValue, key : String, default : Int) -> Int {
   match get_int(value, key) {
@@ -4991,14 +6501,20 @@ pub fn get_int_or(value : TomlValue, key : String, default : Int) -> Int {
   }
 }
 
+///|
 /// Get the float value or a default
-pub fn get_float_or(value : TomlValue, key : String, default : Double) -> Double {
+pub fn get_float_or(
+  value : TomlValue,
+  key : String,
+  default : Double,
+) -> Double {
   match get_float(value, key) {
     Some(f) => f
     None => default
   }
 }
 
+///|
 /// Get the bool value or a default
 pub fn get_bool_or(value : TomlValue, key : String, default : Bool) -> Bool {
   match get_bool(value, key) {
@@ -5007,11 +6523,13 @@ pub fn get_bool_or(value : TomlValue, key : String, default : Bool) -> Bool {
   }
 }
 
+///|
 /// Recursively collect all leaf key paths (dotted notation)
 pub fn all_paths(value : TomlValue) -> Array[String] {
   collect_paths(value, "")
 }
 
+///|
 fn collect_paths(value : TomlValue, prefix : String) -> Array[String] {
   match value {
     TomlValue::Table(t) | TomlValue::InlineTable(t) => {
@@ -5019,10 +6537,17 @@ fn collect_paths(value : TomlValue, prefix : String) -> Array[String] {
       let result : Array[String] = []
       let mut i = 0
       while i < entries.length() {
-        let new_prefix = if prefix == "" { entries[i].0 } else { prefix + "." + entries[i].0 }
+        let new_prefix = if prefix == "" {
+          entries[i].0
+        } else {
+          prefix + "." + entries[i].0
+        }
         let sub = collect_paths(entries[i].1, new_prefix)
         let mut j = 0
-        while j < sub.length() { result.push(sub[j]); j = j + 1 }
+        while j < sub.length() {
+          result.push(sub[j])
+          j = j + 1
+        }
         i = i + 1
       }
       result
@@ -5034,7 +6559,10 @@ fn collect_paths(value : TomlValue, prefix : String) -> Array[String] {
         let new_prefix = prefix + "[" + j.to_string() + "]"
         let sub = collect_paths(arr[j], new_prefix)
         let mut k = 0
-        while k < sub.length() { result.push(sub[k]); k = k + 1 }
+        while k < sub.length() {
+          result.push(sub[k])
+          k = k + 1
+        }
         j = j + 1
       }
       result
@@ -5050,13 +6578,15 @@ fn collect_paths(value : TomlValue, prefix : String) -> Array[String] {
 // SECTION 9: Serializer
 // ============================================================
 
+///|
 /// Serialize TomlValue to TOML string
 pub fn serialize(value : TomlValue) -> String {
   ser_value(value, 0)
 }
 
+///|
 fn ser_value(value : TomlValue, depth : Int) -> String {
-  let pad = String::make(depth * 2, Int::unsafe_to_char(32))
+  let _pad = String::make(depth * 2, Int::unsafe_to_char(32))
   match value {
     TomlValue::Str(s) => ser_string(s)
     TomlValue::Int(i) => i.to_string()
@@ -5072,10 +6602,12 @@ fn ser_value(value : TomlValue, depth : Int) -> String {
   }
 }
 
+///|
 fn ser_string(s : String) -> String {
   "\"" + ser_escape(s) + "\""
 }
 
+///|
 fn ser_escape(s : String) -> String {
   let bs = String::make(1, Int::unsafe_to_char(92))
   let dq = String::make(1, Int::unsafe_to_char(34))
@@ -5083,35 +6615,56 @@ fn ser_escape(s : String) -> String {
   let mut i = 0
   while i < s.length() {
     let c = s[i].to_int()
-    if c == 34 { result = result + bs + dq }
-    else if c == 92 { result = result + bs + bs }
-    else if c == 10 { result = result + bs + "n" }
-    else if c == 13 { result = result + bs + "r" }
-    else if c == 9 { result = result + bs + "t" }
-    else if c < 32 { result = result + bs + "u" + fmt4(c) }
-    else { result = result + String::make(1, Int::unsafe_to_char(c)) }
+    if c == 34 {
+      result = result + bs + dq
+    } else if c == 92 {
+      result = result + bs + bs
+    } else if c == 10 {
+      result = result + bs + "n"
+    } else if c == 13 {
+      result = result + bs + "r"
+    } else if c == 9 {
+      result = result + bs + "t"
+    } else if c < 32 {
+      result = result + bs + "u" + fmt4(c)
+    } else {
+      result = result + String::make(1, Int::unsafe_to_char(c))
+    }
     i = i + 1
   }
   result
 }
+
+///|
 fn ser_float(f : Double) -> String {
   let s = f.to_string()
-  if s == "inf" { "inf" }
-  else if s == "-inf" { "-inf" }
-  else if s == "nan" { "nan" }
-  else if !String::contains(s, ".") && !String::contains(s, "e") && !String::contains(s, "E") {
+  if s == "inf" {
+    "inf"
+  } else if s == "-inf" {
+    "-inf"
+  } else if s == "nan" {
+    "nan"
+  } else if !String::contains(s, ".") &&
+    !String::contains(s, "e") &&
+    !String::contains(s, "E") {
     s + ".0"
+  } else {
+    s
   }
-  else { s }
 }
 
+///|
 fn ser_array(arr : Array[TomlValue], depth : Int) -> String {
-  if arr.length() == 0 { return "[]" }
+  if arr.length() == 0 {
+    return "[]"
+  }
   if arr.length() <= 4 {
     let mut r = "["
     let mut i = 0
     while i < arr.length() {
-      if i > 0 { r = r + ", " }
+      if i > 0 {
+        r = r + ", "
+      }
       r = r + ser_value(arr[i], depth)
       i = i + 1
     }
@@ -5122,7 +6675,9 @@ fn ser_array(arr : Array[TomlValue], depth : Int) -> String {
     let mut r = "[\n"
     let mut i = 0
     while i < arr.length() {
-      if i > 0 { r = r + ",\n" }
+      if i > 0 {
+        r = r + ",\n"
+      }
       r = r + pad1 + ser_value(arr[i], depth + 1)
       i = i + 1
     }
@@ -5130,49 +6685,70 @@ fn ser_array(arr : Array[TomlValue], depth : Int) -> String {
   }
 }
 
+///|
 fn ser_table(table : Map[String, TomlValue], depth : Int) -> String {
-  if table.length() == 0 { return "{}" }
+  if table.length() == 0 {
+    return "{}"
+  }
   let pad = String::make(depth * 2, Int::unsafe_to_char(32))
   let entries = table.to_array()
   let mut r = ""
   let mut i = 0
   while i < entries.length() {
-    if i > 0 { r = r + "\n" }
+    if i > 0 {
+      r = r + "\n"
+    }
     match entries[i].1 {
-      TomlValue::Table(_) | TomlValue::Array(_) => { let _ = 0 }
-      _ => {
-        r = r + pad + ser_key(entries[i].0) + " = " + ser_value(entries[i].1, depth + 1)
+      TomlValue::Table(_) | TomlValue::Array(_) => {
+        let _ = 0
       }
+      _ =>
+        r = r +
+          pad +
+          ser_key(entries[i].0) +
+          " = " +
+          ser_value(entries[i].1, depth + 1)
     }
     i = i + 1
   }
   r
 }
 
+///|
 fn ser_inline_table(table : Map[String, TomlValue]) -> String {
-  if table.length() == 0 { return "{}" }
+  if table.length() == 0 {
+    return "{}"
+  }
   let entries = table.to_array()
   let mut r = "{ "
   let mut i = 0
   while i < entries.length() {
-    if i > 0 { r = r + ", " }
+    if i > 0 {
+      r = r + ", "
+    }
     r = r + ser_key(entries[i].0) + " = " + ser_value(entries[i].1, 0)
     i = i + 1
   }
   r + " }"
 }
 
+///|
 fn ser_key(s : String) -> String {
-  if s.length() == 0 { return "\"\"" }
+  if s.length() == 0 {
+    return "\"\""
+  }
   let mut i = 0
   while i < s.length() {
     let c = s[i].to_int()
-    if !is_bare_key_char(c) && c != 46 { return "\"" + s + "\"" }
+    if !is_bare_key_char(c) && c != 46 {
+      return "\"" + s + "\""
+    }
     i = i + 1
   }
   s
 }
 
+///|
 /// Round-trip: parse then serialize
 pub fn roundtrip(source : String) -> String? {
   match parse(source) {
@@ -5181,11 +6757,11 @@ pub fn roundtrip(source : String) -> String? {
   }
 }
 
-
 // ============================================================
 // SECTION 99: Template Engine (v1.3.0)
 // ============================================================
 
+///|
 /// Render a template string with variable substitution.
 /// Variables are denoted by {{ name }} syntax.
 pub fn render_template(template : String, vars : Map[String, String]) -> String {
@@ -5202,10 +6778,10 @@ pub fn render_template(template : String, vars : Map[String, String]) -> String 
           let jc1 = template[j]
           let jc2 = template[j + 1]
           if jc1.to_int() == 125 && jc2.to_int() == 125 {
-            let var_name = template.substring(start=i + 2, end=j).trim().to_string()
+            let var_name = template[i + 2:j].trim().to_owned()
             match vars.get(var_name) {
-              Some(v) => { result = result + v }
-              None => { result = result + "{{" + var_name + "}}" }
+              Some(v) => result = result + v
+              None => result = result + "{{" + var_name + "}}"
             }
             i = j + 2
             break

@@ -33,13 +33,15 @@ moonbit-toml/
 
 ## Usage
 
-```moonbit
-using @lib { parse, merge, diff, to_json_like }
+```moonbit nocheck
+///|
+using @lib {parse, merge, diff, to_json_like}
 
+///|
 fn main {
   let base = parse("[server]\nport = 8080")
   let overlay = parse("[server]\nport = 9090\nssl = true")
-  
+
   let merged = merge(base, overlay)
   println(to_json_like(merged))
 }

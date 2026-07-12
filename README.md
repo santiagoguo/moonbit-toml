@@ -6,16 +6,53 @@
 
 A comprehensive TOML v1.0.0 **Data Engineering Toolkit** written in [MoonBit](https://www.moonbitlang.com/).
 
-Unlike standard TOML parsers, this library provides a full lifecycle management solution including **Merge, Diff, Validation, Schema, and Multi-Format Serialization (JSON/YAML/SQL/CSV/XML/DOT)**.
+一个用 MoonBit 从零编写的 TOML 全功能解析与序列化库，提供配置文件的完整生命周期管理——解析、校验、合并（Merge）、差异（Diff）、查询、多格式转换（JSON/YAML/SQL/CSV/XML/DOT）、统计分析。
 
 - **Repository**: <https://github.com/santiagoguo/moonbit-toml>
 - **License**: [Apache-2.0](LICENSE)
 
 ---
 
-## Why This Project?
+## 安装 / Installation
+
+### 1. 安装 MoonBit 工具链
+
+```bash
+# Linux / macOS
+curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+
+# Windows PowerShell
+irm https://cli.moonbitlang.cn/install/powershell.ps1 | iex
+```
+
+安装完成后重启终端，验证版本：
+
+```bash
+moon version
+```
+
+### 2. 克隆项目
+
+```bash
+git clone https://github.com/santiagoguo/moonbit-toml.git
+cd moonbit-toml
+```
+
+### 3. 构建与运行
+
+```bash
+moon build          # 构建
+moon run cmd/main   # 运行演示（合并/差异/转换/统计）
+moon test           # 运行测试（70/70 通过）
+```
+
+---
+
+## Why This Project? / 项目定位
 
 While `bobzhang/toml` focuses on strict TOML 1.1 spec compliance, **moonbit-toml** focuses on **application engineering**:
+
+与仅关注规范合规性的基础解析器不同，本项目定位为**配置数据工程工具包**：
 
 - **Configuration Management**: Merge base/overlay configs, diff versions, and audit changes.
 - **Interoperability**: Seamlessly convert TOML to JSON, YAML, SQL DDL, CSV, XML, and DOT.
@@ -161,7 +198,7 @@ moon run cmd/cli
 moon test
 ```
 
-Expected output: **69/69 tests passed** (19 white-box + 50 black-box integration tests).
+Expected output: **70/70 tests passed** (19 white-box + 51 black-box integration tests).
 
 The CI pipeline also runs:
 
@@ -174,9 +211,18 @@ moon test --deny-warn    # Test suite with warnings as errors
 
 ---
 
-## CI
+## CI / 持续集成
 
 This project uses [GitHub Actions](https://github.com/santiagoguo/moonbit-toml/actions/workflows/ci.yml) for continuous integration on every push and pull request to `main`.
+
+每次推送和 PR 自动执行以下检查：
+
+```bash
+moon check --deny-warn   # 类型检查（警告视为错误）
+moon fmt --check         # 格式检查
+moon info                # 接口文件生成
+moon test --deny-warn    # 测试（70/70，警告视为错误）
+```
 
 ---
 

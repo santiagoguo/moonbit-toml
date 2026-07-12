@@ -1,0 +1,22 @@
+name: Sync to GitLink
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push to GitLink
+        run: |
+          git config user.name "santiagoguo"
+          git config user.email "santiagoguo@users.noreply.github.com"
+          git remote add gitlink https://hanlinwu:${{ secrets.GITLINK_TOKEN }}@www.gitlink.org.cn/hanlinwu/moonbit-toml.git
+          git push gitlink main --force
+          git push gitlink --tags --force
